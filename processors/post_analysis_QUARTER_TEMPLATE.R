@@ -1,5 +1,5 @@
 ### RENTAL LISTINGS POST-PROCESSING SKELETON CODE -- QUARTERLY ###
-# Date: April 23, 2020
+# Date: April 23, 2019
 
 # STEP 0: CODE PREP (PACKAGES, WORKING DIRECTORIES, SETTINGS)
 # STEP 1: READ IN MOST UPDATED PARCEL DATA
@@ -20,13 +20,13 @@ options(scipen=999)
 options(max.print=10000)
 
 # Load packages
-#install.packages("pacman") # pacman package allows for easy installing and loading of multiple packages in a single function
+install.packages("pacman", repos = "http://cran.us.r-project.org") # pacman package allows for easy installing and loading of multiple packages in a single function
 library(pacman)
-pacman::p_load(plyr, dplyr, tidyverse, ggplot2, stringr, stringdist, ngram, sp, rgdal, raster, foreign, gtools) 
+pacman::p_load(plyr, dplyr, tidyverse, ggplot2, stringr, stringdist, ngram, sp, rgdal, raster, foreign, gtools, here, maptools)
 
 # define working directories
-outFilePath <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/data/output/output_2019q2_clean"
-spatialSrcPath <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/data/spatial"
+outFilePath <- here("data", "finished")
+spatialSrcPath <- here("data", "spatial")
 
 today <- Sys.Date()
 year<- format(today, "%Y")
@@ -37,11 +37,11 @@ day <- format(today, "%d")
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
 ### READ IN PARCEL DATA ###
 # parcel data (most recent) -- TAKES ABOUT ONE HOUR
-setwd(spatialSrcPath)
-parcels_mapc = readOGR(dsn = ".", layer = "ma_parcels_mapc", stringsAsFactors = FALSE)
+# setwd(spatialSrcPath)
+parcels_mapc = readOGR(dsn = here("data", "spatial"), layer = "ma_parcels_mapc", stringsAsFactors = FALSE)
 
-#project the shapefiles to NAD83 
-CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
+#project the shapefiles to NAD83
+CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.fla68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
                 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 proj4string(parcels_mapc) <- CRS.new
@@ -73,56 +73,50 @@ parcels_consortium_c = spTransform(parcels_consortium_c, CRS(new_CRS))
 parcels_consortium_d = spTransform(parcels_consortium_d, CRS(new_CRS))
 
 # now recombine the parcel partitions to make the full, spTransform-ed MAPC parcel dataframe
-parcels_consortium_abcd = spRbind(spRbind(spRbind(parcels_consortium_a, parcels_consortium_b), 
+parcels_consortium_abcd = spRbind(spRbind(spRbind(parcels_consortium_a, parcels_consortium_b),
                                           parcels_consortium_c),parcels_consortium_d)
 
 
 ###################################### STEP 2: READ IN RENTAL LISTINGS DATA ######################################
-##### EXAMPLE: 2019 Q3
-listings_unique_2019_q3 <- read.csv("K:/DataServices/Projects/Current_Projects/rental_listings_research/outputs/2019q3/geolocator/deduplicated_processed_listings.csv", stringsAsFactors = FALSE)
-
-listings_unique_temp <- listings_unique_2019_q3 %>%
+listings_unique <- read.csv(here("data", "rental-listings_Q4-2019", "geolocator", "1580147387.198015_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
   mutate(eight_bedroom = ifelse(numRooms == 8, eight_bedroom == 1, 0)) %>%
   dplyr::select(-1) # remove X variable (the first column) because it becomes redundant after combining the four dataframes
 
-# clear memory of now-unnecessary data
-rm(listings_unique_2019_q3)
-
 #categorize Quarter
-colnames(listings_unique_temp)[which(names(listings_unique_temp) == "Year")] <- "year"
-colnames(listings_unique_temp)[which(names(listings_unique_temp) == "Month")] <- "month"
-listings_unique_temp$quarter [listings_unique_temp$year == 2019 & (listings_unique_temp$month > 6 & listings_unique_temp$month <= 9)] = "2019 Q3"
+colnames(listings_unique)[which(names(listings_unique) == "Year")] <- "year"
+colnames(listings_unique)[which(names(listings_unique) == "Month")] <- "month"
+listings_unique$quarter [listings_unique$year == 2019 & (listings_unique$month > 6 & listings_unique$month <= 9)] = "2019 Q4"
 
 ### LAG IN POSTED TO UPDATED TIME ###
-# # calculate updated lag 
-listings_unique_temp$update_lag <- as.Date(listings_unique_temp$updated_date) - as.Date(listings_unique_temp$post_date)
+# # calculate updated lag
+listings_unique$update_lag <- as.Date(listings_unique$updated_date) - as.Date(listings_unique$post_date)
 
 
-#replace lat long attributes with GEOLOCATED lat long 
-listings_unique_temp$latitude_merge[is.na(listings_unique_temp$latitude_merge)] <- 0
-listings_unique_temp$latitude_original <- listings_unique_temp$latitude
+#replace lat long attributes with GEOLOCATED lat long
+listings_unique$latitude_merge[is.na(listings_unique$latitude_merge)] <- 0
+listings_unique$latitude_original <- listings_unique$latitude
 
 # source ID 1 = craigslist
 # source ID 2 = padmapper
 # only padmapper data should update their original longitude/latitude using the longitude_merge/latitude_merge variables
 # craigslist data should keep its original longitude/latitude
 
-listings_unique_temp$latitude <- ifelse(listings_unique_temp$latitude_merge < 0 & listings_unique_temp$source_id == 2,  
-                                        listings_unique_temp$latitude_merge,
-                                        listings_unique_temp$latitude)
+listings_unique$latitude <- ifelse(listings_unique$latitude_merge < 0 & listings_unique$source_id == 2,
+                                        listings_unique$latitude_merge,
+                                        listings_unique$latitude)
 
-listings_unique_temp$longitude_merge[is.na(listings_unique_temp$longitude_merge)] <- 0
-listings_unique_temp$longitude_original <- listings_unique_temp$longitude
+listings_unique$longitude_merge[is.na(listings_unique$longitude_merge)] <- 0
+listings_unique$longitude_original <- listings_unique$longitude
 
-listings_unique_temp$longitude <- ifelse(listings_unique_temp$longitude_merge < 0 & listings_unique_temp$source_id == 2,  
-                                         listings_unique_temp$longitude_merge,
-                                         listings_unique_temp$longitude)
+listings_unique$longitude <- ifelse(listings_unique$longitude_merge < 0 & listings_unique$source_id == 2,
+                                         listings_unique$longitude_merge,
+                                         listings_unique$longitude)
 
 ###################################### STEP 3: LINK RENTAL LISTINGS DATA TO PARCEL ID ######################################
-# read lat long attributes of the listing records and create event points of WGS1984 geographic projection 
+# read lat long attributes of the listing records and create event points of WGS1984 geographic projection
 WCS1984_CRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-event.Points <- SpatialPoints(data.frame(latitude = listings_unique_temp$latitude, longitude = listings_unique_temp$longitude),
-                              proj4string = CRS(WCS1984_CRS)) 
+event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, longitude = listings_unique$longitude),
+                              proj4string = CRS(WCS1984_CRS))
 
 #reproject the points to NAD83
 event.Points <- spTransform(event.Points, CRS(new_CRS))
@@ -132,35 +126,35 @@ pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
 
 #extract the names from each overlay
 try (
-  if("parloc_id" %in% colnames(pnt_parcels_consortium)) 
+  if("parloc_id" %in% colnames(pnt_parcels_consortium))
     parloc_id <- pnt_parcels_consortium$parloc_id
-  else 
+  else
     stop("Error! No town attribute detected in town shapefile!")
 )
 
 try (
-  if("yr_built" %in% colnames(pnt_parcels_consortium)) 
+  if("yr_built" %in% colnames(pnt_parcels_consortium))
     yr_built <- pnt_parcels_consortium$yr_built
-  else 
+  else
     stop("Error! No town attribute detected in town shapefile!")
 )
 
 try (
-  if("luc_adj_1" %in% colnames(pnt_parcels_consortium)) 
+  if("luc_adj_1" %in% colnames(pnt_parcels_consortium))
     luc_adj_1 <- pnt_parcels_consortium$luc_adj_1
-  else 
+  else
     stop("Error! No town attribute detected in town shapefile!")
 )
 
 try (
-  if("luc_adj_2" %in% colnames(pnt_parcels_consortium)) 
+  if("luc_adj_2" %in% colnames(pnt_parcels_consortium))
     luc_adj_2 <- pnt_parcels_consortium$luc_adj_2
-  else 
+  else
     stop("Error! No town attribute detected in town shapefile!")
-)  
+)
 
 #add the parcel attributes to the listings
-listings_unique_w_parcel <- cbind(listings_unique_temp, parloc_id, luc_adj_1, luc_adj_2, yr_built)
+listings_unique_w_parcel <- cbind(listings_unique, parloc_id, luc_adj_1, luc_adj_2, yr_built)
 
 
 ###################################### STEP 4: LINK RENTAL LISTINGS DATA TO ZIP CODE ######################################
@@ -169,13 +163,13 @@ listings_unique_w_parcel <- cbind(listings_unique_temp, parloc_id, luc_adj_1, lu
 # error if not available with releavant message and exit the method
 list.files(spatialSrcPath, pattern='\\.shp$')
 
-try(if (file.exists(paste0(spatialSrcPath,'/zip_MA.shp')) == FALSE) 
+try(if (file.exists(paste0(spatialSrcPath,'/zip_MA.shp')) == FALSE)
   stop("ZIP code file not available!"))
 
 # read shape files of ZIP code boundaries
 zip.shape <- readOGR(dsn=path.expand(spatialSrcPath), layer ="zip_MA")
 
-# project the shapefiles to NAD83 
+# project the shapefiles to NAD83
 proj4string(zip.shape) <- CRS.new
 
 zip.shape <- spTransform(zip.shape, CRS(new_CRS))
@@ -193,13 +187,13 @@ listings_unique$yr_built <- as.numeric(levels(listings_unique$yr_built))[listing
 
 #### CAMBRIDGE HOUSING STARTS PERMITS ####
 parcels_cambridge = parcels_consortium_abcd[parcels_consortium_abcd$muni == "Cambridge",]
-camb_housingstarts = read.csv("K:/DataServices/Projects/Current_Projects/rental_listings_research/data/partner cities/Cambridge/cambridge_housingstarts_updated2019.csv")
-camb_housingstarts_update = camb_housingstarts %>% separate(Location, c("Longitude", "Latitude"), sep = ",") 
+camb_housingstarts = read.csv(here("data", "partners", "Cambridge", "cambridge_housingstarts_updated2019.csv"))
+camb_housingstarts_update = camb_housingstarts %>% separate(Location, c("Longitude", "Latitude"), sep = ",")
 camb_housingstarts_update$Longitude = as.numeric(gsub("\\(", "", camb_housingstarts_update$Longitude))
 camb_housingstarts_update$Latitude = as.numeric(gsub("\\)", "", camb_housingstarts_update$Latitude))
 
 camb_housingstarts.Points <- SpatialPoints(data.frame(latitude = camb_housingstarts_update$Latitude, longitude= camb_housingstarts_update$Longitude),
-                                           proj4string = CRS(WCS1984_CRS)) 
+                                           proj4string = CRS(WCS1984_CRS))
 
 #reproject the points to NAD83
 camb_housingstarts.Points <- spTransform(camb_housingstarts.Points, CRS(new_CRS))
@@ -212,7 +206,7 @@ camb_housingstarts_temp = cbind(camb_housingstarts_update, Muni = "Cambridge", S
 # here, we filter on the most recent housing start for each parcel, and if multiple housing starts happened in the same year, we filter on the Order
 # Order = Unique identifier that orders cases by year, by fiscal year (if applicable), by street number, and by house number
 # We select the highest order for a given parcel
-camb_housingstarts_final = camb_housingstarts_temp %>% 
+camb_housingstarts_final = camb_housingstarts_temp %>%
   rename(camb_yr_built = Year.Permitted) %>%
   group_by(parloc_id) %>%
   filter(camb_yr_built == (max(camb_yr_built)),
@@ -220,8 +214,8 @@ camb_housingstarts_final = camb_housingstarts_temp %>%
 
 # Now we no longer have duplicate parloc_id observations, and each parloc_id is associated with the most recent year housing starts occurred on that parcel.
 
-listings_unique_w_camb = left_join(listings_unique, 
-                                   camb_housingstarts_final[, c("parloc_id","camb_yr_built")], 
+listings_unique_w_camb = left_join(listings_unique,
+                                   camb_housingstarts_final[, c("parloc_id","camb_yr_built")],
                                    by = "parloc_id",
                                    na_matches = 'never') # require NAs and NaN to NOT be matched -- if you match NAs, then a parloc_id NA from Cambridge with a given yr_built value can be assigned to any other municipality's parloc_NA, giving their yr_built value a camb_yr_built value! We don't want that!
 
@@ -229,8 +223,8 @@ listings_unique_w_camb$camb_yr_built[is.na(listings_unique_w_camb$camb_yr_built)
 listings_unique_w_camb$yr_built[listings_unique_w_camb$camb_yr_built >0 ] = listings_unique_w_camb$camb_yr_built[listings_unique_w_camb$camb_yr_built >0 ]
 
 #### BOSTON HOUSING COMPLETIONS #### -- HOLD FOR NOW
-bos_comp_older = read.csv("K:/DataServices/Projects/Current_Projects/rental_listings_research/data/partner cities/Boston/Completions_3-16-18_FOR MAPC_jointoParcels.csv")
-bos_comp_update = read.csv("K:/DataServices/Projects/Current_Projects/rental_listings_research/data/partner cities/Boston/Boston Housing Completions 1.1.19 thru 9.27.19.csv")
+bos_comp_older = read.csv(here("data", "partners", "Boston", "Completions_3-16-18_FOR MAPC_jointoParcels.csv"), fileEncoding="latin1")
+bos_comp_update = read.csv(here("data", "partners", "Boston", "Boston Housing Completions 1.1.19 thru 9.27.19.csv"), fileEncoding="latin1")
 
 bos_comp_older = bos_comp_older %>%
   dplyr::select(-parloc_id) %>%
@@ -242,7 +236,7 @@ bos_comp_update$parloc_id = as.factor(bos_comp_update$Ward...Parcel)
 l <- list(bos_comp_older,
           bos_comp_update)
 
-u = do.call(smartbind,l) 
+u = do.call(smartbind,l)
 
 bos_comp_final = u %>%
   dplyr::select(colnames(bos_comp_older))
@@ -251,7 +245,7 @@ bos_comp_final$bos_yr_built = as.Date(bos_comp_final$Complete.Date, "%m/%d/%Y")
 bos_comp_final$bos_yr_built = format(bos_comp_final$bos_yr_built, "%Y")
 
 listings_unique = left_join(listings_unique_w_camb,
-                            bos_comp_final[, c("parloc_id","bos_yr_built")], 
+                            bos_comp_final[, c("parloc_id","bos_yr_built")],
                             by = "parloc_id",
                             na_matches = 'never')
 listings_unique$bos_yr_built[is.na(listings_unique$bos_yr_built)]  <- 0
@@ -260,7 +254,7 @@ listings_unique$yr_built[listings_unique$bos_yr_built >0 ] = listings_unique$bos
 #### YEAR BUILT CATEGORIZATION ####
 listings_unique$periodblt [listings_unique$yr_built >= 2011] = "b_2011 or later"
 listings_unique$periodblt [listings_unique$yr_built < 2011] = "a_Before 2011"
-listings_unique$periodblt [listings_unique$yr_built == 0] = "d_NA"  
+listings_unique$periodblt [listings_unique$yr_built == 0] = "d_NA"
 
 ###################################### STEP 6: FINAL DATASET WRANGLING BEFORE ANALYSIS ######################################
 ### rooms for rent ###
@@ -274,12 +268,12 @@ listings_unique$shared <- grepl(" SHARED | SHARE ", listings_unique$title)
 # Reorder by column name
 listings_unique_mod <- listings_unique %>%
   dplyr::select("id",
-                "ask", 
-                "bedrooms", 
-                "numRooms", 
-                "title", 
+                "ask",
+                "bedrooms",
+                "numRooms",
+                "title",
                 "original_title",
-                "source_id", 
+                "source_id",
                 "survey_id",
                 "post_date",
                 "created_date",
@@ -313,10 +307,10 @@ listings_unique_mod <- listings_unique %>%
                 "five_bedroom",
                 "five_bedroom._not_in_range",
                 "six_bedroom","six_bedroom._not_in_range",
-                "seven_bedroom",
-                "seven_bedroom._not_in_range",
-                "eight_bedroom",                              #2016
-                "eight_bedroom._not_in_range",                #2016
+                # "seven_bedroom",
+                # "seven_bedroom._not_in_range",
+                # "eight_bedroom",                              #2016
+                # "eight_bedroom._not_in_range",                #2016
                 #"nine_bedroom",                               #2016
                 #"nine_bedroom._not_in_range",                 #2016
                 "periodblt",
@@ -344,13 +338,8 @@ listings_unique_mod <- listings_unique %>%
                 "updated_at",
                 "uniqueid",
                 "parloc_id",
-                "pid_long_15",
-                "pid_long_16",
-                "luc_adj_1",
-                "luc_adj_2",
-                "parloc_id",
-                "pid_long_15",
-                "pid_long_16",
+                # "pid_long_15",
+                # "pid_long_16",
                 "luc_adj_1",
                 "luc_adj_2",
                 "yr_built",
@@ -358,14 +347,14 @@ listings_unique_mod <- listings_unique %>%
                 "bos_yr_built") %>%
   mutate(zip_code = as.character(zip_code))
 
-listings_unique_units <- filter(listings_unique_mod, 
-                                roomrent == "FALSE" & 
-                                  sublet == "FALSE" & 
-                                  shortterm == "FALSE" & 
-                                  shared == "FALSE" & 
+listings_unique_units <- filter(listings_unique_mod,
+                                roomrent == "FALSE" &
+                                  sublet == "FALSE" &
+                                  shortterm == "FALSE" &
+                                  shared == "FALSE" &
                                   update_lag<=30)
 
-# remove units from zip code 02108 that are below $700 ask and in two locations with high rates of probable scam listings 
+# remove units from zip code 02108 that are below $700 ask and in two locations with high rates of probable scam listings
 # (1 Acorn and 10 Willow)
 listings_unique_units_clean <- listings_unique_units %>%
   filter(!(zip_code == '02108' & (BASE_merge == 'Acorn' | BASE_merge == 'Willow') & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
@@ -375,7 +364,7 @@ listings_summary_counts <- ddply(listings_unique_units_clean,c("year", "month", 
                                  rentcount = length(numRooms),
                                  medrent = round(median(ask), 0))
 
-rm(bos_comp, camb_housingstarts, CRS.new, event.Points, listings_unique, listings_unique_mod, 
+rm(bos_comp, camb_housingstarts, CRS.new, event.Points, listings_unique, listings_unique_mod,
    pnt_zip.shape, zip.shape)
 gc() # garbage collection -- tells us how much space we have remaining in memory
 
@@ -468,53 +457,41 @@ listings_summary_somerville_nhood_quarterly_age <- filter(listings_summary_nhood
 listings_summary_arlington_nhood_quarterly_age <- filter(listings_summary_nhood_quarterly_age, muni == "ARLINGTON")
 
 ###################################### STEP 8: WRITE TABLES (MAKE SURE YOU CHANGE THE YEAR AND QUARTER IN THE FILE NAMES BELOW) ######################################
-setwd(outFilePath)
-
-write.csv(listings_summary_counts, paste("listings_summary_counts_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_unique_units, paste("listings_unique_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_unique_units_clean, paste("listings_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_unique_units_boston, paste("listings_boston_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_unique_units_cambridge, paste("listings_cambridge_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_unique_units_quincy, paste("listings_quincy_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""))
-write.csv(listings_unique_units_somerville, paste("listings_somerville_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_unique_units_arlington, paste("listings_arlington_unique_clean_full_units_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-###
-write.csv(listings_summary_full_quarterly,paste("listings_full_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_muni_quarterly, paste("listings_muni_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_ct_quarterly, paste("listings_ct_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_nhood_quarterly, paste("listings_nhood_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_zip_quarterly, paste("listings_zip_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_summary_boston_quarterly, paste("listings_boston_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_cambridge_quarterly, paste("listings_cambridge_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_quincy_quarterly, paste("listings_quincy_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_somerville_quarterly, paste("listings_somerville_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_arlington_quarterly, paste("listings_arlington_summary_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_summary_boston_nhood_quarterly, paste("listings_boston_summary_nhood_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_cambridge_nhood_quarterly, paste("listings_cambridge_summary_nhood_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_quincy_nhood_quarterly, paste("listings_quincy_summary_nhood_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_somerville_nhood_quarterly, paste("listings_somerville_summary_nhood_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_arlington_nhood_quarterly, paste("listings_arlington_summary_nhood_quarterly_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-###
-write.csv(listings_summary_full_quarterly_age, paste("listings_full_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_muni_quarterly_age, paste("listings_muni_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_ct_quarterly_age, paste("listings_ct_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_nhood_quarterly_age, paste("listings_nhood_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_zip_quarterly_age, paste("listings_zip_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_summary_boston_quarterly_age, paste("listings_boston_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_cambridge_quarterly_age, paste("listings_cambridge_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_quincy_quarterly_age, paste("listings_quincy_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_somerville_quarterly_age, paste("listings_somerville_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_arlington_quarterly_age, paste("listings_arlington_summary_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-
-write.csv(listings_summary_boston_nhood_quarterly_age, paste("listings_boston_summary_nhood_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_cambridge_nhood_quarterly_age, paste("listings_cambridge_summary_nhood_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_quincy_nhood_quarterly_age, paste("listings_quincy_summary_nhood_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_somerville_nhood_quarterly_age, paste("listings_somerville_summary_nhood_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
-write.csv(listings_summary_arlington_nhood_quarterly_age, paste("listings_arlington_summary_nhood_quarterly_age_","2019q3_",year,month,day,".csv", sep=""),row.names = FALSE)
+write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_boston, here("data", "finished", paste("listings_boston_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_cambridge, here("data", "finished", paste("listings_cambridge_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_quincy, here("data", "finished", paste("listings_quincy_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")))
+write.csv(listings_unique_units_somerville, here("data", "finished", paste("listings_somerville_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_arlington, here("data", "finished", paste("listings_arlington_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly,here("data", "finished", paste("listings_full_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly, here("data", "finished", paste("listings_muni_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly, here("data", "finished", paste("listings_ct_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly, here("data", "finished", paste("listings_nhood_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly, here("data", "finished", paste("listings_zip_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_boston_quarterly, here("data", "finished", paste("listings_boston_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_cambridge_quarterly, here("data", "finished", paste("listings_cambridge_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_quincy_quarterly, here("data", "finished", paste("listings_quincy_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_somerville_quarterly, here("data", "finished", paste("listings_somerville_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_arlington_quarterly, here("data", "finished", paste("listings_arlington_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_boston_nhood_quarterly, here("data", "finished", paste("listings_boston_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_cambridge_nhood_quarterly, here("data", "finished", paste("listings_cambridge_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_quincy_nhood_quarterly, here("data", "finished", paste("listings_quincy_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_somerville_nhood_quarterly, here("data", "finished", paste("listings_somerville_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_arlington_nhood_quarterly, here("data", "finished", paste("listings_arlington_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly_age, here("data", "finished", paste("listings_full_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly_age, here("data", "finished", paste("listings_muni_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly_age, here("data", "finished", paste("listings_ct_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly_age, here("data", "finished", paste("listings_nhood_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly_age, here("data", "finished", paste("listings_zip_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_boston_quarterly_age, here("data", "finished", paste("listings_boston_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_cambridge_quarterly_age, here("data", "finished", paste("listings_cambridge_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_quincy_quarterly_age, here("data", "finished", paste("listings_quincy_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_somerville_quarterly_age, here("data", "finished", paste("listings_somerville_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_arlington_quarterly_age, here("data", "finished", paste("listings_arlington_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_boston_nhood_quarterly_age, here("data", "finished", paste("listings_boston_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_cambridge_nhood_quarterly_age, here("data", "finished", paste("listings_cambridge_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_quincy_nhood_quarterly_age, here("data", "finished", paste("listings_quincy_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_somerville_nhood_quarterly_age, here("data", "finished", paste("listings_somerville_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_arlington_nhood_quarterly_age, here("data", "finished", paste("listings_arlington_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
