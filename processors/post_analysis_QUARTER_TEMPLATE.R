@@ -379,20 +379,21 @@ listings_summary_zip_quarterly_age <- ddply(listings_unique_units_clean,c("sourc
 
 # Save CSV summaries for every municipality.
 for (municipality in municipalities) {
+  dir.create(here("data", "finished", municipality), showWarnings = FALSE)
   write.csv(filter(listings_summary_muni_quarterly, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_nhood_quarterly, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_nhood_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_muni_quarterly_age, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_nhood_quarterly_age, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
+            here("data", "finished", municipality,  paste("listings_",municipality,"_summary_nhood_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_unique_units_clean, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),
+            here("data", "finished", municipality, paste("listings_",municipality,"_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
 }
 
