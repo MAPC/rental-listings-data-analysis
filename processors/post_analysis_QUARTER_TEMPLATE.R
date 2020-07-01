@@ -1,6 +1,4 @@
 ### RENTAL LISTINGS POST-PROCESSING SKELETON CODE -- QUARTERLY ###
-# Date: April 23, 2019
-
 # STEP 0: CODE PREP (PACKAGES, WORKING DIRECTORIES, SETTINGS)
 # STEP 1: READ IN MOST UPDATED PARCEL DATA
 # STEP 2: READ IN RENTAL LISTINGS DATA <<<--------- UPDATE WITH MOST RECENT RENTAL LISTINGS QUARTERLY DATA CSV!
@@ -18,10 +16,6 @@ install.packages("pacman", repos = "http://cran.us.r-project.org")
 library(pacman)
 pacman::p_load(plyr, dplyr, tidyverse, ggplot2, stringr, stringdist, ngram, sp, rgdal, raster, foreign, gtools, here, maptools)
 
-# define working directories
-outFilePath <- here("data", "finished")
-spatialSrcPath <- here("data", "spatial")
-
 today <- Sys.Date()
 year<- format(today, "%Y")
 month <- format(today, "%m")
@@ -30,7 +24,7 @@ day <- format(today, "%d")
 municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
-load(file = here("data", "parcels_consortium_abcd.RData"))
+load(file = here("data", "spatial", "parcels_consortium_abcd.RData"))
 new_CRS <- "+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0"
 CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
@@ -120,13 +114,13 @@ listings_unique_w_parcel <- cbind(listings_unique, parloc_id, luc_adj_1, luc_adj
 
 # check is the files exist in the directory of dsn throw
 # error if not available with releavant message and exit the method
-list.files(spatialSrcPath, pattern='\\.shp$')
+list.files(here("data", "spatial"), pattern='\\.shp$')
 
-try(if (file.exists(paste0(spatialSrcPath,'/zip_MA.shp')) == FALSE)
+try(if (file.exists(paste0(here("data", "spatial"),'/zip_MA.shp')) == FALSE)
   stop("ZIP code file not available!"))
 
 # read shape files of ZIP code boundaries
-zip.shape <- readOGR(dsn=path.expand(spatialSrcPath), layer ="zip_MA")
+zip.shape <- readOGR(dsn=path.expand(here("data", "spatial")), layer ="zip_MA")
 
 # project the shapefiles to NAD83
 proj4string(zip.shape) <- CRS.new
@@ -323,17 +317,9 @@ listings_summary_counts <- ddply(listings_unique_units_clean,c("year", "month", 
                                  rentcount = length(numRooms),
                                  medrent = round(median(ask), 0))
 
-rm(bos_comp, camb_housingstarts, CRS.new, event.Points, listings_unique, listings_unique_mod,
+rm(camb_housingstarts, CRS.new, event.Points, listings_unique, listings_unique_mod,
    pnt_zip.shape, zip.shape)
 gc() # garbage collection -- tells us how much space we have remaining in memory
-
-### POINT-LEVEL LISTINGS FULL UNITS (NO ROOMMATES ETC) ###
-
-listings_unique_units_boston <- filter(listings_unique_units_clean, muni == "BOSTON")
-listings_unique_units_cambridge <- filter(listings_unique_units_clean, muni == "CAMBRIDGE")
-listings_unique_units_quincy <- filter(listings_unique_units_clean, muni == "QUINCY")
-listings_unique_units_somerville <- filter(listings_unique_units_clean, muni == "SOMERVILLE")
-listings_unique_units_arlington <- filter(listings_unique_units_clean, muni == "ARLINGTON")
 
 ###################################### STEP 7: QUARTERLY SUMMARY STATISTICS ######################################
 
@@ -404,17 +390,15 @@ for (municipality in municipalities) {
   write.csv(filter(listings_summary_nhood_quarterly_age, muni == municipality),
             here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),
             row.names = FALSE)
+  write.csv(filter(listings_unique_units_clean, muni == municipality),
+            here("data", "finished", paste("listings_",municipality,"_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),
+            row.names = FALSE)
 }
 
 ###################################### STEP 8: WRITE TABLES (MAKE SURE YOU CHANGE THE YEAR AND QUARTER IN THE FILE NAMES BELOW) ######################################
 write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
 write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
 write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_boston, here("data", "finished", paste("listings_boston_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_cambridge, here("data", "finished", paste("listings_cambridge_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_quincy, here("data", "finished", paste("listings_quincy_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")))
-write.csv(listings_unique_units_somerville, here("data", "finished", paste("listings_somerville_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_arlington, here("data", "finished", paste("listings_arlington_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
 write.csv(listings_summary_full_quarterly,here("data", "finished", paste("listings_full_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
 write.csv(listings_summary_muni_quarterly, here("data", "finished", paste("listings_muni_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
 write.csv(listings_summary_ct_quarterly, here("data", "finished", paste("listings_ct_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
