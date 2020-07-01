@@ -20,6 +20,7 @@ today <- Sys.Date()
 year<- format(today, "%Y")
 month <- format(today, "%m")
 day <- format(today, "%d")
+quarter <- "Q2"
 
 municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 
@@ -31,7 +32,7 @@ CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 ###################################### STEP 2: READ IN RENTAL LISTINGS DATA ######################################
-listings_unique <- read.csv(here("data", "rental-listings_Q4-2019", "geolocator", "1580147387.198015_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
+listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",year,sep=""), "geolocator", "1593617273.058532_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
   mutate(eight_bedroom = ifelse(numRooms == 8, eight_bedroom == 1, 0)) %>%
   dplyr::select(-1) # remove X variable (the first column) because it becomes redundant after combining the four dataframes
 
@@ -379,33 +380,33 @@ listings_summary_zip_quarterly_age <- ddply(listings_unique_units_clean,c("sourc
 # Save CSV summaries for every municipality.
 for (municipality in municipalities) {
   write.csv(filter(listings_summary_muni_quarterly, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),
+            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_nhood_quarterly, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_","2019Q4_",year,month,day,".csv", sep="")),
+            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_muni_quarterly_age, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),
+            here("data", "finished", paste("listings_",municipality,"_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_summary_nhood_quarterly_age, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),
+            here("data", "finished", paste("listings_",municipality,"_summary_nhood_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
   write.csv(filter(listings_unique_units_clean, muni == municipality),
-            here("data", "finished", paste("listings_",municipality,"_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),
+            here("data", "finished", paste("listings_",municipality,"_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
 }
 
 ###################################### STEP 8: WRITE TABLES (MAKE SURE YOU CHANGE THE YEAR AND QUARTER IN THE FILE NAMES BELOW) ######################################
-write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_full_quarterly,here("data", "finished", paste("listings_full_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_muni_quarterly, here("data", "finished", paste("listings_muni_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_ct_quarterly, here("data", "finished", paste("listings_ct_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_nhood_quarterly, here("data", "finished", paste("listings_nhood_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_zip_quarterly, here("data", "finished", paste("listings_zip_summary_quarterly_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_full_quarterly_age, here("data", "finished", paste("listings_full_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_muni_quarterly_age, here("data", "finished", paste("listings_muni_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_ct_quarterly_age, here("data", "finished", paste("listings_ct_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_nhood_quarterly_age, here("data", "finished", paste("listings_nhood_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_zip_quarterly_age, here("data", "finished", paste("listings_zip_summary_quarterly_age_","2019Q4_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly,here("data", "finished", paste("listings_full_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly, here("data", "finished", paste("listings_muni_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly, here("data", "finished", paste("listings_ct_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly, here("data", "finished", paste("listings_nhood_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly, here("data", "finished", paste("listings_zip_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly_age, here("data", "finished", paste("listings_full_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly_age, here("data", "finished", paste("listings_muni_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly_age, here("data", "finished", paste("listings_ct_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly_age, here("data", "finished", paste("listings_nhood_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly_age, here("data", "finished", paste("listings_zip_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
