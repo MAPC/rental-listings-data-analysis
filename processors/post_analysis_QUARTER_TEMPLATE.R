@@ -39,7 +39,6 @@ listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",ye
 #categorize Quarter
 colnames(listings_unique)[which(names(listings_unique) == "Year")] <- "year"
 colnames(listings_unique)[which(names(listings_unique) == "Month")] <- "month"
-listings_unique$quarter [listings_unique$year == 2019 & (listings_unique$month > 6 & listings_unique$month <= 9)] = "2019 Q4"
 
 ### LAG IN POSTED TO UPDATED TIME ###
 # # calculate updated lag
@@ -235,10 +234,8 @@ listings_unique_mod <- listings_unique %>%
                 "update_lag",
                 "month",
                 "year",
-                "quarter",
                 "latitude",
                 "longitude",
-                #"repeated_location",                         #2016
                 "ct10_id",
                 "muni_ID",
                 "muni",
@@ -261,12 +258,6 @@ listings_unique_mod <- listings_unique %>%
                 "five_bedroom",
                 "five_bedroom._not_in_range",
                 "six_bedroom","six_bedroom._not_in_range",
-                # "seven_bedroom",
-                # "seven_bedroom._not_in_range",
-                # "eight_bedroom",                              #2016
-                # "eight_bedroom._not_in_range",                #2016
-                #"nine_bedroom",                               #2016
-                #"nine_bedroom._not_in_range",                 #2016
                 "periodblt",
                 "roomrent",
                 "sublet",
@@ -292,8 +283,6 @@ listings_unique_mod <- listings_unique %>%
                 "updated_at",
                 "uniqueid",
                 "parloc_id",
-                # "pid_long_15",
-                # "pid_long_16",
                 "luc_adj_1",
                 "luc_adj_2",
                 "yr_built",
@@ -325,54 +314,54 @@ gc() # garbage collection -- tells us how much space we have remaining in memory
 ###################################### STEP 7: QUARTERLY SUMMARY STATISTICS ######################################
 
 listings_summary_full_quarterly <- ddply(listings_unique_units_clean,
-                                         c("numRooms","quarter"), summarise,
+                                         c("numRooms"), summarise,
                                          rentcount = length(numRooms),
                                          meanrent = round(mean(ask),0),
                                          medrent = round(median(ask), 0))
 
-listings_summary_muni_quarterly <- ddply(listings_unique_units_clean,c("muni","numRooms","quarter"), summarise,
+listings_summary_muni_quarterly <- ddply(listings_unique_units_clean,c("muni","numRooms"), summarise,
                                          rentcount = length(numRooms),
                                          meanrent = round(mean(ask),0),
                                          medrent = round(median(ask), 0))
 
 
-listings_summary_nhood_quarterly <- ddply(listings_unique_units_clean,c("neighborhood_01","muni","numRooms","quarter"), summarise,
+listings_summary_nhood_quarterly <- ddply(listings_unique_units_clean,c("neighborhood_01","muni","numRooms"), summarise,
                                           rentcount = length(numRooms),
                                           meanrent = round(mean(ask),0),
                                           medrent = round(median(ask), 0))
 
-listings_summary_ct_quarterly <- ddply(listings_unique_units_clean,c("ct10_id","muni","numRooms","quarter"), summarise,
+listings_summary_ct_quarterly <- ddply(listings_unique_units_clean,c("ct10_id","muni","numRooms"), summarise,
                                        rentcount = length(numRooms),
                                        meanrent = round(mean(ask),0),
                                        medrent = round(median(ask), 0))
 
-listings_summary_zip_quarterly <- ddply(listings_unique_units_clean,c("zip_code","muni","numRooms","quarter"), summarise,
+listings_summary_zip_quarterly <- ddply(listings_unique_units_clean,c("zip_code","muni","numRooms"), summarise,
                                         rentcount = length(numRooms),
                                         meanrent = round(mean(ask),0),
                                         medrent = round(median(ask), 0))
 
 listings_summary_full_quarterly_age <- ddply(listings_unique_units_clean,
-                                             c("source_id","numRooms","quarter","periodblt"), summarise,
+                                             c("source_id","numRooms","periodblt"), summarise,
                                              rentcount = length(numRooms),
                                              meanrent = round(mean(ask),0),
                                              medrent = round(median(ask), 0))
 
-listings_summary_muni_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","muni","numRooms","quarter","periodblt"), summarise,
+listings_summary_muni_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","muni","numRooms","periodblt"), summarise,
                                              rentcount = length(numRooms),
                                              meanrent = round(mean(ask),0),
                                              medrent = round(median(ask), 0))
 
-listings_summary_nhood_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","neighborhood_01","muni","numRooms","quarter","periodblt"), summarise,
+listings_summary_nhood_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","neighborhood_01","muni","numRooms","periodblt"), summarise,
                                               rentcount = length(numRooms),
                                               meanrent = round(mean(ask),0),
                                               medrent = round(median(ask), 0))
 
-listings_summary_ct_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","ct10_id","numRooms","quarter","periodblt"), summarise,
+listings_summary_ct_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","ct10_id","numRooms","periodblt"), summarise,
                                            rentcount = length(numRooms),
                                            meanrent = round(mean(ask),0),
                                            medrent = round(median(ask), 0))
 
-listings_summary_zip_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","zip_code","numRooms","quarter","periodblt"), summarise,
+listings_summary_zip_quarterly_age <- ddply(listings_unique_units_clean,c("source_id","zip_code","numRooms","periodblt"), summarise,
                                             rentcount = length(numRooms),
                                             meanrent = round(mean(ask),0),
                                             medrent = round(median(ask), 0))
