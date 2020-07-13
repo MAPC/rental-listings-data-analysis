@@ -32,7 +32,7 @@ CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 ###################################### STEP 2: READ IN RENTAL LISTINGS DATA ######################################
-listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",year,sep=""), "geolocator", "1593617273.058532_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
+listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",year,sep=""), "geolocator", "1594657732.025175_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
   mutate(eight_bedroom = ifelse(numRooms == 8, eight_bedroom == 1, 0)) %>%
   dplyr::select(-1) # remove X variable (the first column) because it becomes redundant after combining the four dataframes
 
@@ -257,7 +257,6 @@ listings_unique_mod <- listings_unique %>%
                 "four_bedroom._not_in_range",
                 "five_bedroom",
                 "five_bedroom._not_in_range",
-                "six_bedroom","six_bedroom._not_in_range",
                 "periodblt",
                 "roomrent",
                 "sublet",
