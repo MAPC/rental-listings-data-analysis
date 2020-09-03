@@ -10,11 +10,11 @@ export
 
 .PHONY: all clean
 
-all: listings_ARLINGTON_2020_Q2.shp\
-	   listings_BOSTON_2020_Q2.shp\
-	   listings_CAMBRIDGE_2020_Q2.shp\
-	   listings_QUINCY_2020_Q2.shp\
-	   listings_SOMERVILLE_2020_Q2.shp
+all: listings_ARLINGTON_2020_7.shp\
+	   listings_BOSTON_2020_7.shp\
+	   listings_CAMBRIDGE_2020_7.shp\
+	   listings_QUINCY_2020_7.shp\
+	   listings_SOMERVILLE_2020_7.shp
 
 clean:
 	rm -Rf data/finished/ARLINGTON/spatial/*
@@ -22,33 +22,53 @@ clean:
 	rm -Rf data/finished/CAMBRIDGE/spatial/*
 	rm -Rf data/finished/QUINCY/spatial/*
 	rm -Rf data/finished/SOMERVILLE/spatial/*
+	rm data/finished/ARLINGTON/listings_ARLINGTON_2020_7-cleaned.csv
+	rm data/finished/BOSTON/listings_BOSTON_2020_7-cleaned.csv
+	rm data/finished/CAMBRIDGE/listings_CAMBRIDGE_2020_7-cleaned.csv
+	rm data/finished/QUINCY/listings_QUINCY_2020_7-cleaned.csv
+	rm data/finished/SOMERVILLE/listings_SOMERVILLE_2020_7-cleaned.csv
 
-listings_ARLINGTON_2020_Q2.shp: $(wildcard listings_ARLINGTON_unique_clean_full_units_2020Q2_*.csv)
+listings_ARLINGTON_2020_7-cleaned.csv: listings_ARLINGTON_unique_clean_full_units_2020-7.csv
+	in2csv -e iso-8859-1 -f csv data/finished/ARLINGTON/$(notdir $<) > data/finished/ARLINGTON/$(notdir $@)
+
+listings_ARLINGTON_2020_7.shp: listings_ARLINGTON_2020_7-cleaned.csv
 	mkdir -p data/finished/ARLINGTON/spatial
 	ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:4326\
-		-oo X_POSSIBLE_NAMES=longitude_merge -oo Y_POSSIBLE_NAMES=latitude_merge\
+		-oo X_POSSIBLE_NAMES=latitude -oo Y_POSSIBLE_NAMES=longitude\
 		-f "ESRI Shapefile" data/finished/ARLINGTON/spatial/$(notdir $@) data/finished/ARLINGTON/$(notdir $<)
 
-listings_BOSTON_2020_Q2.shp: $(wildcard listings_BOSTON_unique_clean_full_units_2020Q2_*.csv)
+listings_BOSTON_2020_7-cleaned.csv: listings_BOSTON_unique_clean_full_units_2020-7.csv
+	in2csv -e iso-8859-1 -f csv data/finished/BOSTON/$(notdir $<) > data/finished/BOSTON/$(notdir $@)
+
+listings_BOSTON_2020_7.shp: listings_BOSTON_2020_7-cleaned.csv
 	mkdir -p data/finished/BOSTON/spatial
 	ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:4326\
-		-oo X_POSSIBLE_NAMES=longitude_merge -oo Y_POSSIBLE_NAMES=latitude_merge\
+		-oo X_POSSIBLE_NAMES=latitude -oo Y_POSSIBLE_NAMES=longitude\
 		-f "ESRI Shapefile" data/finished/BOSTON/spatial/$(notdir $@) data/finished/BOSTON/$(notdir $<)
 
-listings_CAMBRIDGE_2020_Q2.shp: $(wildcard listings_CAMBRIDGE_unique_clean_full_units_2020Q2_*.csv)
+listings_CAMBRIDGE_2020_7-cleaned.csv: listings_CAMBRIDGE_unique_clean_full_units_2020-7.csv
+	in2csv -e iso-8859-1 -f csv data/finished/CAMBRIDGE/$(notdir $<) > data/finished/CAMBRIDGE/$(notdir $@)
+
+listings_CAMBRIDGE_2020_7.shp: listings_CAMBRIDGE_2020_7-cleaned.csv
 	mkdir -p data/finished/CAMBRIDGE/spatial
 	ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:4326\
-		-oo X_POSSIBLE_NAMES=longitude_merge -oo Y_POSSIBLE_NAMES=latitude_merge\
+		-oo X_POSSIBLE_NAMES=latitude -oo Y_POSSIBLE_NAMES=longitude\
 		-f "ESRI Shapefile" data/finished/CAMBRIDGE/spatial/$(notdir $@) data/finished/CAMBRIDGE/$(notdir $<)
 
-listings_QUINCY_2020_Q2.shp: $(wildcard listings_QUINCY_unique_clean_full_units_2020Q2_*.csv)
+listings_QUINCY_2020_7-cleaned.csv: listings_QUINCY_unique_clean_full_units_2020-7.csv
+	in2csv -e iso-8859-1 -f csv data/finished/QUINCY/$(notdir $<) > data/finished/QUINCY/$(notdir $@)
+
+listings_QUINCY_2020_7.shp: listings_QUINCY_2020_7-cleaned.csv
 	mkdir -p data/finished/QUINCY/spatial
 	ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:4326\
-		-oo X_POSSIBLE_NAMES=longitude_merge -oo Y_POSSIBLE_NAMES=latitude_merge\
+		-oo X_POSSIBLE_NAMES=latitude -oo Y_POSSIBLE_NAMES=longitude\
 		-f "ESRI Shapefile" data/finished/QUINCY/spatial/$(notdir $@) data/finished/QUINCY/$(notdir $<)
 
-listings_SOMERVILLE_2020_Q2.shp: $(wildcard listings_SOMERVILLE_unique_clean_full_units_2020Q2_*.csv)
+listings_SOMERVILLE_2020_7-cleaned.csv: listings_SOMERVILLE_unique_clean_full_units_2020-7.csv
+	in2csv -e iso-8859-1 -f csv data/finished/SOMERVILLE/$(notdir $<) > data/finished/SOMERVILLE/$(notdir $@)
+
+listings_SOMERVILLE_2020_7.shp: listings_SOMERVILLE_2020_7-cleaned.csv
 	mkdir -p data/finished/SOMERVILLE/spatial
 	ogr2ogr -s_srs EPSG:4326 -t_srs EPSG:4326\
-		-oo X_POSSIBLE_NAMES=longitude_merge -oo Y_POSSIBLE_NAMES=latitude_merge\
+		-oo X_POSSIBLE_NAMES=latitude -oo Y_POSSIBLE_NAMES=longitude\
 		-f "ESRI Shapefile" data/finished/SOMERVILLE/spatial/$(notdir $@) data/finished/SOMERVILLE/$(notdir $<)
