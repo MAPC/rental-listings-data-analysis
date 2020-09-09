@@ -29,6 +29,7 @@ clean:
 	rm data/finished/SOMERVILLE/listings_SOMERVILLE_2020_8-cleaned.csv
 
 listings_ARLINGTON_2020_8-cleaned.csv: listings_ARLINGTON_unique_clean_full_units_2020-8.csv
+	sed -i -e '1s/\.//g' data/finished/ARLINGTON/$(notdir $<)
 	in2csv -e iso-8859-1 -f csv data/finished/ARLINGTON/$(notdir $<) > data/finished/ARLINGTON/$(notdir $@)
 
 listings_ARLINGTON_2020_8.shp: listings_ARLINGTON_2020_8-cleaned.csv
@@ -38,6 +39,7 @@ listings_ARLINGTON_2020_8.shp: listings_ARLINGTON_2020_8-cleaned.csv
 		-f "ESRI Shapefile" data/finished/ARLINGTON/spatial/$(notdir $@) data/finished/ARLINGTON/$(notdir $<)
 
 listings_BOSTON_2020_8-cleaned.csv: listings_BOSTON_unique_clean_full_units_2020-8.csv
+	sed -i -e '1s/\.//g' data/finished/BOSTON/$(notdir $<)
 	in2csv -e iso-8859-1 -f csv data/finished/BOSTON/$(notdir $<) > data/finished/BOSTON/$(notdir $@)
 
 listings_BOSTON_2020_8.shp: listings_BOSTON_2020_8-cleaned.csv
@@ -47,6 +49,7 @@ listings_BOSTON_2020_8.shp: listings_BOSTON_2020_8-cleaned.csv
 		-f "ESRI Shapefile" data/finished/BOSTON/spatial/$(notdir $@) data/finished/BOSTON/$(notdir $<)
 
 listings_CAMBRIDGE_2020_8-cleaned.csv: listings_CAMBRIDGE_unique_clean_full_units_2020-8.csv
+	sed -i -e '1s/\.//g' data/finished/CAMBRIDGE/$(notdir $<)
 	in2csv -e iso-8859-1 -f csv data/finished/CAMBRIDGE/$(notdir $<) > data/finished/CAMBRIDGE/$(notdir $@)
 
 listings_CAMBRIDGE_2020_8.shp: listings_CAMBRIDGE_2020_8-cleaned.csv
@@ -56,6 +59,7 @@ listings_CAMBRIDGE_2020_8.shp: listings_CAMBRIDGE_2020_8-cleaned.csv
 		-f "ESRI Shapefile" data/finished/CAMBRIDGE/spatial/$(notdir $@) data/finished/CAMBRIDGE/$(notdir $<)
 
 listings_QUINCY_2020_8-cleaned.csv: listings_QUINCY_unique_clean_full_units_2020-8.csv
+	sed -i -e '1s/\.//g' data/finished/QUINCY/$(notdir $<)
 	in2csv -e iso-8859-1 -f csv data/finished/QUINCY/$(notdir $<) > data/finished/QUINCY/$(notdir $@)
 
 listings_QUINCY_2020_8.shp: listings_QUINCY_2020_8-cleaned.csv
@@ -65,6 +69,7 @@ listings_QUINCY_2020_8.shp: listings_QUINCY_2020_8-cleaned.csv
 		-f "ESRI Shapefile" data/finished/QUINCY/spatial/$(notdir $@) data/finished/QUINCY/$(notdir $<)
 
 listings_SOMERVILLE_2020_8-cleaned.csv: listings_SOMERVILLE_unique_clean_full_units_2020-8.csv
+	sed -i -e '1s/\.//g' data/finished/SOMERVILLE/$(notdir $<)
 	in2csv -e iso-8859-1 -f csv data/finished/SOMERVILLE/$(notdir $<) > data/finished/SOMERVILLE/$(notdir $@)
 
 listings_SOMERVILLE_2020_8.shp: listings_SOMERVILLE_2020_8-cleaned.csv
