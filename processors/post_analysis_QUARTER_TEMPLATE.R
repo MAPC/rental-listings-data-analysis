@@ -20,7 +20,7 @@ today <- Sys.Date()
 year<- format(today, "%Y")
 month <- format(today, "%m")
 day <- format(today, "%d")
-quarter <- "Q2"
+quarter <- "Q4"
 
 municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 
@@ -32,7 +32,7 @@ CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 
 ###################################### STEP 2: READ IN RENTAL LISTINGS DATA ######################################
-listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",year,sep=""), "geolocator", "1594657732.025175_processed_listings.csv"), stringsAsFactors = FALSE)  %>%
+listings_unique <- read.csv(here("data", paste("rental-listings_",quarter,"-",year,sep=""), "cleaner", "1609356765.97111_listings_unique.csv"), stringsAsFactors = FALSE)  %>%
   mutate(eight_bedroom = ifelse(numRooms == 8, eight_bedroom == 1, 0)) %>%
   dplyr::select(-1) # remove X variable (the first column) because it becomes redundant after combining the four dataframes
 
@@ -44,27 +44,6 @@ colnames(listings_unique)[which(names(listings_unique) == "Month")] <- "month"
 # # calculate updated lag
 listings_unique$update_lag <- as.Date(listings_unique$updated_date) - as.Date(listings_unique$post_date)
 
-
-#replace lat long attributes with GEOLOCATED lat long
-listings_unique$latitude_merge[is.na(listings_unique$latitude_merge)] <- 0
-listings_unique$latitude_original <- listings_unique$latitude
-
-# source ID 1 = craigslist
-# source ID 2 = padmapper
-# only padmapper data should update their original longitude/latitude using the longitude_merge/latitude_merge variables
-# craigslist data should keep its original longitude/latitude
-
-listings_unique$latitude <- ifelse(listings_unique$latitude_merge < 0 & listings_unique$source_id == 2,
-                                        listings_unique$latitude_merge,
-                                        listings_unique$latitude)
-
-listings_unique$longitude_merge[is.na(listings_unique$longitude_merge)] <- 0
-listings_unique$longitude_original <- listings_unique$longitude
-
-listings_unique$longitude <- ifelse(listings_unique$longitude_merge < 0 & listings_unique$source_id == 2,
-                                         listings_unique$longitude_merge,
-                                         listings_unique$longitude)
-
 ###################################### STEP 3: LINK RENTAL LISTINGS DATA TO PARCEL ID ######################################
 # read lat long attributes of the listing records and create event points of WGS1984 geographic projection
 WCS1984_CRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
@@ -73,6 +52,7 @@ event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, lo
 
 #reproject the points to NAD83
 event.Points <- spTransform(event.Points, CRS(new_CRS))
+parcels_consortium_abcd <- spTransform(parcels_consortium_abcd, CRS(new_CRS))
 
 #overlay any of the boundaries with the listing records
 pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
@@ -255,28 +235,11 @@ listings_unique_mod <- listings_unique %>%
                 "three_bedroom._not_in_range",
                 "four_bedroom",
                 "four_bedroom._not_in_range",
-                "five_bedroom",
-                "five_bedroom._not_in_range",
                 "periodblt",
                 "roomrent",
                 "sublet",
                 "shortterm",
                 "shared",
-                "fwd_geolocated",
-                "rev_geolocated",
-                "mapzen_geolocated",
-                "mapzen_confidence",
-                "tract10",
-                "tract10_fwd_geocode",        #2016/?
-                "latitude_original",
-                "longitude_original",
-                "latitude_merge",
-                "longitude_merge",
-                "census_tract",               #2016/?
-                "ADDR_NUM_merge",             #2016/?
-                "BASE_merge",                 #2016/?
-                "COMMUNITY_Merge",            #2016/?
-                "joint_addresses_merge",      #2016/?
                 "post_at",
                 "created_at",
                 "updated_at",
@@ -299,7 +262,7 @@ listings_unique_units <- filter(listings_unique_mod,
 # remove units from zip code 02108 that are below $700 ask and in two locations with high rates of probable scam listings
 # (1 Acorn and 10 Willow)
 listings_unique_units_clean <- listings_unique_units %>%
-  filter(!(zip_code == '02108' & (BASE_merge == 'Acorn' | BASE_merge == 'Willow') & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
+  filter(!(zip_code == '02108' & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
   mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
 
 listings_summary_counts <- ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,

@@ -69,6 +69,7 @@ event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, lo
 
 #reproject the points to NAD83
 event.Points <- spTransform(event.Points, CRS(new_CRS))
+parcels_consortium_abcd <- spTransform(parcels_consortium_abcd, CRS(new_CRS))
 
 #overlay any of the boundaries with the listing records
 pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
@@ -251,8 +252,6 @@ listings_unique_mod <- listings_unique %>%
                 "three_bedroom._not_in_range",
                 "four_bedroom",
                 "four_bedroom._not_in_range",
-                "five_bedroom",
-                "five_bedroom._not_in_range",
                 "periodblt",
                 "roomrent",
                 "sublet",
