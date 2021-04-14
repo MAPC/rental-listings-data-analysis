@@ -29,6 +29,7 @@ library(here)
 library(rgeos)
 library(maptools)
 library(sf)
+library(lubridate)
 
 today <- Sys.Date()
 year<- format(today, "%Y")
@@ -258,38 +259,95 @@ mutate(camb_yr_built = replace_na(camb_yr_built, 0))
 listings_unique_w_camb$yr_built[listings_unique_w_camb$camb_yr_built >0 ] = listings_unique_w_camb$camb_yr_built[listings_unique_w_camb$camb_yr_built >0 ]
 
 #### BOSTON HOUSING COMPLETIONS #### -- HOLD FOR NOW
-bos_comp_older = read.csv(here("data", "partners", "Boston", "Completions_3-16-18_FOR MAPC_jointoParcels.csv"), fileEncoding="latin1")
-bos_comp_update = read.csv(here("data", "partners", "Boston", "Boston Housing Completions 1.1.19 thru 9.27.19.csv"), fileEncoding="latin1")
 
-bos_comp_older = bos_comp_older %>%
-  dplyr::select(-parloc_id) %>%
-  rename(parloc_id = "Ward...Parcel")
+bos_comp_older <- read_csv("data/partners/Boston/Completions_3-16-18_FOR MAPC_jointoParcels.csv",
+                           col_names = TRUE,
+                           cols(Project = col_character(),
+                                `Street Number` = col_character(),
+                                `Street Name` = col_character(),
+                                `Total New Units` = col_character(),
+                                `Complete Date` = col_character(),
+                                `COO Number` = col_character(),
+                                `Permit #` = col_character(),
+                                Agency = col_character(),
+                                `Planning District` = col_character(),
+                                `Market Area` = col_character(),
+                                `TOD 5 Min Walk` = col_character(),
+                                `TOD 1/2 Mile` = col_character(),
+                                `Ward & Parcel` = col_character(),
+                                `parloc_id` = col_character(),
+                                `Census Tract` = col_character(),
+                                `Council District` = col_character(),
+                                LAT = col_character(),
+                                LONG = col_character(),
+                                DESCRIPTION = col_character()),
+                           locale(encoding = "latin1")) %>% 
+  janitor::clean_names()
 
-bos_comp_update$parloc_id = as.factor(bos_comp_update$Ward...Parcel)
+bos_comp_update <- read_csv("data/partners/Boston/Boston Housing Completions 1.1.19 thru 9.27.19.csv",
+                            col_names = TRUE,
+                            cols(Project = col_character(),
+                                 `St Number` = col_character(),
+                                 `Street Name` = col_character(),
+                                 Agency = col_character(),
+                                 `Planning District` = col_character(),
+                                 `Market Area` = col_character(),
+                                 `TOD 5 Min Walk` = col_double(),	
+                                 `TOD 1/2 Mile` = col_double(),
+                                 `Ward & Parcel` = col_character(),
+                                 `Census Tract` = col_character(),
+                                 `Council District` = col_double(),
+                                 LAT = col_character(),
+                                 LONG = col_character(),
+                                 `Permit #` = col_character(),
+                                 `Complete Date` = col_character(),	
+                                 `COO Number` = col_character(),
+                                 `Total New Units` = col_character(),
+                                 `New Owner Units` = col_character(),
+                                 `New Rental Units` = col_character(),
+                                 `Afford New Units` = col_character(),
+                                 `Afford New Owner Units` = col_character(),
+                                 `Afford New Rental Units` = col_character(),
+                                 DESCRIPTION = col_character()),
+                            locale(encoding = "latin1")) %>% 
+  janitor::clean_names()
 
 # rbind the bos_comp_older and bos_comp_update datasets on matching column names
-l <- list(bos_comp_older,
-          bos_comp_update)
+# l <- list(bos_comp_older,
+#           bos_comp_update)
+# 
+# u = do.call(smartbind,l)
+# 
+# bos_comp_final = u %>%
+#   dplyr::select(colnames(bos_comp_older))
 
-u = do.call(smartbind,l)
-
-bos_comp_final = u %>%
-  dplyr::select(colnames(bos_comp_older))
-
-bos_comp_final$bos_yr_built = as.Date(bos_comp_final$Complete.Date, "%m/%d/%Y")
-bos_comp_final$bos_yr_built = format(bos_comp_final$bos_yr_built, "%Y")
+# bos_comp_older %>% 
+#   dplyr::select(project, street_number, street_name, planning_district, parloc_id, complete_date) %>% 
+#   bind_rows(.,
+#             bos_comp_update %>% 
+#               dplyr::select(project, st_number, street_name, planning_district, complete_date) %>% 
+#               rename(street_number = st_number)) %>% view()
+# 
+# 
+bos_comp_older <-
+  bos_comp_older %>%
+  mutate(bos_yr_built = year(mdy(complete_date))) %>%
+  dplyr::select(parloc_id, bos_yr_built)
 
 listings_unique <- left_join(listings_unique_w_camb,
-                            bos_comp_final[, c("parloc_id","bos_yr_built")],
+                             bos_comp_older %>% dplyr::select(parloc_id, bos_yr_built),
                             by = "parloc_id",
-                            na_matches = 'never')
-listings_unique$bos_yr_built[is.na(listings_unique$bos_yr_built)]  <- 0
+                            na_matches = 'never') %>% 
+  mutate(bos_yr_built = replace_na(bos_yr_built, 0))
+
 listings_unique$yr_built[listings_unique$bos_yr_built >0 ] = listings_unique$bos_yr_built[listings_unique$bos_yr_built >0 ]
 
 #### YEAR BUILT CATEGORIZATION ####
-listings_unique$periodblt [listings_unique$yr_built >= 2011] = "b_2011 or later"
-listings_unique$periodblt [listings_unique$yr_built < 2011] = "a_Before 2011"
-listings_unique$periodblt [listings_unique$yr_built == 0] = "d_NA"
+listings_unique <- 
+  listings_unique %>% 
+  mutate(periodblt = case_when(yr_built >= 2011 ~ "b_2011 or later",
+                               yr_built < 2011 ~ "a_Before 2011",
+                               yr_built == 0 ~ "d_NA"))
 
 ###################################### STEP 6: FINAL DATASET WRANGLING BEFORE ANALYSIS ######################################
 ### rooms for rent ###
@@ -316,13 +374,13 @@ listings_unique_mod <- listings_unique %>%
                 "update_lag",
                 "month",
                 "year",
-                "latitude",
-                "longitude",
+                #"latitude",
+                #"longitude",
                 "ct10_id",
                 "muni_ID",
                 "muni",
-                "zip_code" = 'pnt_zip.shape$postcode',
-                "zip_muni" = 'pnt_zip.shape$pc_name',
+                "zip_code" = 'postcode',
+                "zip_muni" = 'pc_name',
                 "comm_type",
                 "neighborhood_01",
                 "neighborhood_02",
@@ -363,9 +421,15 @@ listings_unique_units <- filter(listings_unique_mod,
 
 # remove units from zip code 02108 that are below $700 ask and in two locations with high rates of probable scam listings
 # (1 Acorn and 10 Willow)
-listings_unique_units_clean <- listings_unique_units %>%
+listings_unique_units_clean <- 
+  listings_unique_units %>%
+  st_transform(crs = 4326) %>% 
+  mutate(longitude =  sf::st_coordinates(.)[,1],
+         latitude = sf::st_coordinates(.)[,2]) %>%
   filter(!(zip_code == '02108' & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
-  mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
+  mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) %>% # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
+st_drop_geometry()
+
 
 listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
                                  rentcount = length(numRooms),
