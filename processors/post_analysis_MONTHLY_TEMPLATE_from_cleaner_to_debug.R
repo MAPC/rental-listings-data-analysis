@@ -195,60 +195,66 @@ listings_unique <-
 
 
 ###################################### STEP 5: CLEAN UP YEAR BUILT VARIABLE BASED ON PARCEL DATA ######################################
-listings_unique$yr_built[is.na(listings_unique$yr_built)]  <- 0
-listings_unique$yr_built <- as.numeric(levels(listings_unique$yr_built))[listings_unique$yr_built]
+
+listings_unique <- 
+  listings_unique %>% 
+  mutate(yr_built = as.numeric(yr_built),
+         yr_built = replace_na(yr_built, 0))
 
 #### CAMBRIDGE HOUSING STARTS PERMITS ####
-parcels_cambridge = parcels_consortium_abcd[parcels_consortium_abcd$muni == "Cambridge",]
-camb_housingstarts = read.csv(here("data", "partners", "Cambridge", "cambridge_housingstarts_updated2019.csv"))
-camb_housingstarts_update = camb_housingstarts %>% separate(Location, c("Longitude", "Latitude"), sep = ",")
-camb_housingstarts_update$Longitude = as.numeric(gsub("\\(", "", camb_housingstarts_update$Longitude))
-camb_housingstarts_update$Latitude = as.numeric(gsub("\\)", "", camb_housingstarts_update$Latitude))
+
+parcels_cambridge <- 
+  parcels_consortium_abcd %>% 
+  filter(muni == "Cambridge")
+
+camb_housingstarts <- read_csv("data/partners/Cambridge/cambridge_housingstarts_updated2019.csv")
+  separate(Location, c("latitude", "longitude"), sep = ",") %>% 
+  mutate(longitude = as.numeric(gsub("\\)", "", longitude)),
+         latitude = as.numeric(gsub("\\(", "", latitude)))
+
 
 #####
 camb_housingstarts.Points <-
   
-camb_housingstarts_update %>% 
-  as_tibble() %>% 
+camb_housingstarts %>% 
   st_as_sf(.,
-           coords = c("Longitude", "Latitude"),
-           crs = WCS1984_CRS) %>% 
+           coords = c("longitude", "latitude"),
+           crs = 4326) %>% 
   st_transform(.,
-               crs = 26986) %>% 
-  # Converts sf object to sp
-  as_Spatial()
-  
-
-#####
-# camb_housingstarts.Points <- SpatialPoints(data.frame(latitude = camb_housingstarts_update$Latitude, longitude= camb_housingstarts_update$Longitude),
-#                                            proj4string = CRS(WCS1984_CRS))
-# 
-# #reproject the points to NAD83
-# camb_housingstarts.Points <- spTransform(camb_housingstarts.Points, CRS(epsg_26986_crs))
-
-pnt_camb_housingstarts.shape <- over(camb_housingstarts.Points,parcels_cambridge)
+               crs = 26986)
 
 
-camb_housingstarts_temp = cbind(camb_housingstarts_update, Muni = "Cambridge", State = "MA", parloc_id = pnt_camb_housingstarts.shape$parloc_id)
+
+  camb_housingstarts_final <- 
+    st_join(camb_housingstarts.Points,
+            parcels_cambridge) %>% 
+    mutate(Muni = "Cambridge", 
+           State = "MA") %>%
+    rename(camb_yr_built = `Year Permitted`) %>% 
+    group_by(parloc_id) %>%
+    filter(camb_yr_built == (max(camb_yr_built)),
+           Order == max(Order)) %>% 
+    ungroup()
 
 # there are many listings for some parcels -- either they've had several housing starts in the same year on the same parcel, or housing starts in different years
 # here, we filter on the most recent housing start for each parcel, and if multiple housing starts happened in the same year, we filter on the Order
 # Order = Unique identifier that orders cases by year, by fiscal year (if applicable), by street number, and by house number
 # We select the highest order for a given parcel
-camb_housingstarts_final = camb_housingstarts_temp %>%
-  rename(camb_yr_built = Year.Permitted) %>%
-  group_by(parloc_id) %>%
-  filter(camb_yr_built == (max(camb_yr_built)),
-         Order == max(Order))
+ 
+
 
 # Now we no longer have duplicate parloc_id observations, and each parloc_id is associated with the most recent year housing starts occurred on that parcel.
 
-listings_unique_w_camb = left_join(listings_unique,
-                                   camb_housingstarts_final[, c("parloc_id","camb_yr_built")],
-                                   by = "parloc_id",
-                                   na_matches = 'never') # require NAs and NaN to NOT be matched -- if you match NAs, then a parloc_id NA from Cambridge with a given yr_built value can be assigned to any other municipality's parloc_NA, giving their yr_built value a camb_yr_built value! We don't want that!
+listings_unique_w_camb <- left_join(listings_unique,
+                                      camb_housingstarts_final %>% 
+                                        dplyr::select(parloc_id, camb_yr_built) %>% 
+                                        st_drop_geometry(),
+                                      by = "parloc_id",
+                                      na_matches = 'never') # require NAs and NaN to NOT be matched -- if you match NAs, then a parloc_id NA from Cambridge with a given yr_built value can be assigned to any other municipality's parloc_NA, giving their yr_built value a camb_yr_built value! We don't want that!
+listings_unique_w_camb <-
+listings_unique_w_camb %>% 
+mutate(camb_yr_built = replace_na(camb_yr_built, 0))
 
-listings_unique_w_camb$camb_yr_built[is.na(listings_unique_w_camb$camb_yr_built)]  <- 0
 listings_unique_w_camb$yr_built[listings_unique_w_camb$camb_yr_built >0 ] = listings_unique_w_camb$camb_yr_built[listings_unique_w_camb$camb_yr_built >0 ]
 
 #### BOSTON HOUSING COMPLETIONS #### -- HOLD FOR NOW
