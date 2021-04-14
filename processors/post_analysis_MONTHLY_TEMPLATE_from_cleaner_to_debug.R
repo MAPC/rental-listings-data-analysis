@@ -50,32 +50,48 @@ municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 opt <- vector()
 opt$year <- 2021
 opt$month <- 1
-file <- "data/rental-listings_1-2021/cleaner/1611869408.87928_listings_unique.csv"
-
+file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_3-2021/rental-listings_3-2021/cleaner/1617807323.35616_listings_unique.csv"
 
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
 load(file = here("data", "spatial", "parcels_consortium_abcd.RData"))
+
 epsg_26986_crs_but_slightly_wrong <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
 CRS.new <- CRS("+proj=lcc +lat_1=41.71666666666667 +lat_2=42.68333333333333 +lat_0=41 +lon_0=-71.5 +x_0=200000 +y_0=750000
 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-epsg_26986_crs <- CRS("+proj=lcc +lat_1=42.68333333333333 +lat_2=41.71666666666667 +lat_0=41 +lon_0=-71.5 +x_0=200000 
-+y_0=750000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs")
+epsg_26986_crs <- 
+CRS("+proj=lcc 
++lat_1=42.68333333333333 
++lat_2=41.71666666666667 
++lat_0=41 
++lon_0=-71.5 
++x_0=200000 
++y_0=750000 
+    +ellps=GRS80 
+    +datum=NAD83 
+    +units=m 
+    +no_defs")
 
-parcels_consortium_abcd %>% 
+
+parcels_consortium_abcd <- 
+  parcels_consortium_abcd %>% 
+  st_as_sf() %>% 
   st_set_crs(.,
-             "+proj=lcc 
-             +lat_1=41.28333333333333 
-             +lat_2=41.48333333333333 
-             +lat_0=41 
-             +lon_0=-70.5 
-             +x_0=500000.0000000002 +y_0=0 
-             +ellps=GRS80 
-             +datum=NAD83 
-             +to_meter=0.3048006096012192 
+             "+proj=lcc
+             +lat_0=41
+             +lon_0=-71.5
+             +lat_1=41.7166666666667
+             +lat_2=42.6833333333333
+             +x_0=200000
+             +y_0=750000
+             +ellps=GRS80
+             +towgs84=0,0,0,0,0,0,0
+             +units=m
              +no_defs") %>%
   st_transform(.,
-               st_crs(26786))
+               st_crs(26986))
+
+  
 
 ###################################### STEP 2: READ IN RENTAL LISTINGS DATA ######################################
 if( file.access(file) == -1) {
@@ -96,18 +112,44 @@ listings_unique$update_lag <- as.Date(listings_unique$updated_date) - as.Date(li
 
 ###################################### STEP 3: LINK RENTAL LISTINGS DATA TO PARCEL ID ######################################
 # read lat long attributes of the listing records and create event points of WGS1984 geographic projection
-WCS1984_CRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, longitude = listings_unique$longitude),
-                              proj4string = CRS(WCS1984_CRS))
+#WCS1984_CRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+event.Points <-
+  listings_unique %>% 
+  as_tibble() %>% 
+  st_as_sf(coords = c("longitude","latitude"),
+           crs = 4326) %>% 
+  st_transform(.,
+               crs = 26986)
+
+ggplot()+
+  geom_sf(data = parcels_consortium_abcd,
+          aes(geometry = geometry))+
+  geom_sf(data = event.Points,
+          aes(geometry = geometry))+
+coord_sf(xlim = c(224474.9, 252005.6), 
+         ylim = c(883835.7, 909577.2), expand = TRUE)
+
+# event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, longitude = listings_unique$longitude),
+#                               proj4string = CRS(WCS1984_CRS)) 
 
 #reproject the points to NAD83
-event.Points <- spTransform(event.Points, epsg_26986_crs)
-proj4string(parcels_consortium_abcd) <- epsg_26986_crs
+# event.Points <- spTransform(event.Points, epsg_26986_crs)
+# proj4string(parcels_consortium_abcd) <- epsg_26986_crs
+
 
 #overlay any of the boundaries with the listing records
 browser()
-pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
+# pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
 
+pnt_parcels_consortium <- 
+  st_join(event.Points %>% 
+            dplyr::select(!c(parloc_id)),
+          parcels_consortium_abcd %>%
+            dplyr::select(parloc_id),
+          left = TRUE)
+
+parcels_consortium_abcd %>% ggplot()+geom_sf()
 #extract the names from each overlay
 try (
   if("parloc_id" %in% colnames(pnt_parcels_consortium))
@@ -178,13 +220,29 @@ camb_housingstarts_update = camb_housingstarts %>% separate(Location, c("Longitu
 camb_housingstarts_update$Longitude = as.numeric(gsub("\\(", "", camb_housingstarts_update$Longitude))
 camb_housingstarts_update$Latitude = as.numeric(gsub("\\)", "", camb_housingstarts_update$Latitude))
 
-camb_housingstarts.Points <- SpatialPoints(data.frame(latitude = camb_housingstarts_update$Latitude, longitude= camb_housingstarts_update$Longitude),
-                                           proj4string = CRS(WCS1984_CRS))
+#####
+camb_housingstarts.Points <-
+  
+camb_housingstarts_update %>% 
+  as_tibble() %>% 
+  st_as_sf(.,
+           coords = c("Longitude", "Latitude"),
+           crs = WCS1984_CRS) %>% 
+  st_transform(.,
+               crs = 26986) %>% 
+  # Converts sf object to sp
+  as_Spatial()
+  
 
-#reproject the points to NAD83
-camb_housingstarts.Points <- spTransform(camb_housingstarts.Points, CRS(new_CRS))
+#####
+# camb_housingstarts.Points <- SpatialPoints(data.frame(latitude = camb_housingstarts_update$Latitude, longitude= camb_housingstarts_update$Longitude),
+#                                            proj4string = CRS(WCS1984_CRS))
+# 
+# #reproject the points to NAD83
+# camb_housingstarts.Points <- spTransform(camb_housingstarts.Points, CRS(epsg_26986_crs))
 
 pnt_camb_housingstarts.shape <- over(camb_housingstarts.Points,parcels_cambridge)
+
 
 camb_housingstarts_temp = cbind(camb_housingstarts_update, Muni = "Cambridge", State = "MA", parloc_id = pnt_camb_housingstarts.shape$parloc_id)
 
@@ -230,7 +288,7 @@ bos_comp_final = u %>%
 bos_comp_final$bos_yr_built = as.Date(bos_comp_final$Complete.Date, "%m/%d/%Y")
 bos_comp_final$bos_yr_built = format(bos_comp_final$bos_yr_built, "%Y")
 
-listings_unique = left_join(listings_unique_w_camb,
+listings_unique <- left_join(listings_unique_w_camb,
                             bos_comp_final[, c("parloc_id","bos_yr_built")],
                             by = "parloc_id",
                             na_matches = 'never')
@@ -318,7 +376,7 @@ listings_unique_units_clean <- listings_unique_units %>%
   filter(!(zip_code == '02108' & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
   mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
 
-listings_summary_counts <- ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
+listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
                                  rentcount = length(numRooms),
                                  medrent = round(median(ask), 0))
 
@@ -328,55 +386,55 @@ gc() # garbage collection -- tells us how much space we have remaining in memory
 
 ###################################### STEP 7: MONTHLY SUMMARY STATISTICS ######################################
 
-listings_summary_full <- ddply(listings_unique_units_clean,
+listings_summary_full <- plyr::ddply(listings_unique_units_clean,
                                          c("numRooms"), summarise,
                                          rentcount = length(numRooms),
                                          meanrent = round(mean(ask),0),
                                          medrent = round(median(ask), 0))
 
-listings_summary_muni <- ddply(listings_unique_units_clean,c("muni","numRooms"), summarise,
+listings_summary_muni <- plyr::ddply(listings_unique_units_clean,c("muni","numRooms"), summarise,
                                          rentcount = length(numRooms),
                                          meanrent = round(mean(ask),0),
                                          medrent = round(median(ask), 0))
 
 
-listings_summary_nhood <- ddply(listings_unique_units_clean,c("neighborhood_01","muni","numRooms"), summarise,
+listings_summary_nhood <- plyr::ddply(listings_unique_units_clean,c("neighborhood_01","muni","numRooms"), summarise,
                                           rentcount = length(numRooms),
                                           meanrent = round(mean(ask),0),
                                           medrent = round(median(ask), 0))
 
-listings_summary_ct <- ddply(listings_unique_units_clean,c("ct10_id","muni","numRooms"), summarise,
+listings_summary_ct <- plyr::ddply(listings_unique_units_clean,c("ct10_id","muni","numRooms"), summarise,
                                        rentcount = length(numRooms),
                                        meanrent = round(mean(ask),0),
                                        medrent = round(median(ask), 0))
 
-listings_summary_zip <- ddply(listings_unique_units_clean,c("zip_code","muni","numRooms"), summarise,
+listings_summary_zip <- plyr::ddply(listings_unique_units_clean,c("zip_code","muni","numRooms"), summarise,
                                         rentcount = length(numRooms),
                                         meanrent = round(mean(ask),0),
                                         medrent = round(median(ask), 0))
 
-listings_summary_full_age <- ddply(listings_unique_units_clean,
+listings_summary_full_age <- plyr::ddply(listings_unique_units_clean,
                                              c("source_id","numRooms","periodblt"), summarise,
                                              rentcount = length(numRooms),
                                              meanrent = round(mean(ask),0),
                                              medrent = round(median(ask), 0))
 
-listings_summary_muni_age <- ddply(listings_unique_units_clean,c("source_id","muni","numRooms","periodblt"), summarise,
+listings_summary_muni_age <- plyr::ddply(listings_unique_units_clean,c("source_id","muni","numRooms","periodblt"), summarise,
                                              rentcount = length(numRooms),
                                              meanrent = round(mean(ask),0),
                                              medrent = round(median(ask), 0))
 
-listings_summary_nhood_age <- ddply(listings_unique_units_clean,c("source_id","neighborhood_01","muni","numRooms","periodblt"), summarise,
+listings_summary_nhood_age <- plyr::ddply(listings_unique_units_clean,c("source_id","neighborhood_01","muni","numRooms","periodblt"), summarise,
                                               rentcount = length(numRooms),
                                               meanrent = round(mean(ask),0),
                                               medrent = round(median(ask), 0))
 
-listings_summary_ct_age <- ddply(listings_unique_units_clean,c("source_id","ct10_id","numRooms","periodblt"), summarise,
+listings_summary_ct_age <- plyr::ddply(listings_unique_units_clean,c("source_id","ct10_id","numRooms","periodblt"), summarise,
                                            rentcount = length(numRooms),
                                            meanrent = round(mean(ask),0),
                                            medrent = round(median(ask), 0))
 
-listings_summary_zip_age <- ddply(listings_unique_units_clean,c("source_id","zip_code","numRooms","periodblt"), summarise,
+listings_summary_zip_age <- plyr::ddply(listings_unique_units_clean,c("source_id","zip_code","numRooms","periodblt"), summarise,
                                             rentcount = length(numRooms),
                                             meanrent = round(mean(ask),0),
                                             medrent = round(median(ask), 0))
