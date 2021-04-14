@@ -139,74 +139,59 @@ coord_sf(xlim = c(224474.9, 252005.6),
 
 
 #overlay any of the boundaries with the listing records
-browser()
 # pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
 
-pnt_parcels_consortium <- 
+listings_unique_w_parcel <- 
   st_join(event.Points %>% 
-            dplyr::select(!c(parloc_id)),
+            dplyr::select(!c(luc_adj_2, luc_adj_1, yr_built, parloc_id)),
           parcels_consortium_abcd %>%
-            dplyr::select(parloc_id),
+            dplyr::select(luc_adj_2, luc_adj_1, yr_built, parloc_id),
           left = TRUE)
 
-parcels_consortium_abcd %>% ggplot()+geom_sf()
-#extract the names from each overlay
-try (
-  if("parloc_id" %in% colnames(pnt_parcels_consortium))
-    parloc_id <- pnt_parcels_consortium$parloc_id
-  else
-    stop("Error! No town attribute detected in town shapefile!")
-)
-
-try (
-  if("yr_built" %in% colnames(pnt_parcels_consortium))
-    yr_built <- pnt_parcels_consortium$yr_built
-  else
-    stop("Error! No town attribute detected in town shapefile!")
-)
-
-try (
-  if("luc_adj_1" %in% colnames(pnt_parcels_consortium))
-    luc_adj_1 <- pnt_parcels_consortium$luc_adj_1
-  else
-    stop("Error! No town attribute detected in town shapefile!")
-)
-
-try (
-  if("luc_adj_2" %in% colnames(pnt_parcels_consortium))
-    luc_adj_2 <- pnt_parcels_consortium$luc_adj_2
-  else
-    stop("Error! No town attribute detected in town shapefile!")
-)
-
-#add the parcel attributes to the listings @@@
-listings_unique_w_parcel <- cbind(listings_unique, parloc_id, luc_adj_1, luc_adj_2, yr_built)
+# #extract the names from each overlay
+# try (
+#   if("parloc_id" %in% colnames(pnt_parcels_consortium))
+#     parloc_id <- pnt_parcels_consortium$parloc_id
+#   else
+#     stop("Error! No town attribute detected in town shapefile!")
+# )
+# 
+# try (
+#   if("yr_built" %in% colnames(pnt_parcels_consortium))
+#     yr_built <- pnt_parcels_consortium$yr_built
+#   else
+#     stop("Error! No town attribute detected in town shapefile!")
+# )
+# 
+# try (
+#   if("luc_adj_1" %in% colnames(pnt_parcels_consortium))
+#     luc_adj_1 <- pnt_parcels_consortium$luc_adj_1
+#   else
+#     stop("Error! No town attribute detected in town shapefile!")
+# )
+# 
+# try (
+#   if("luc_adj_2" %in% colnames(pnt_parcels_consortium))
+#     luc_adj_2 <- pnt_parcels_consortium$luc_adj_2
+#   else
+#     stop("Error! No town attribute detected in town shapefile!")
+# )
+# 
+# #add the parcel attributes to the listings @@@
+# listings_unique_w_parcel <- cbind(listings_unique, parloc_id, luc_adj_1, luc_adj_2, yr_built)
 
 
 ###################################### STEP 4: LINK RENTAL LISTINGS DATA TO ZIP CODE ######################################
 
-# check is the files exist in the directory of dsn throw
-# error if not available with releavant message and exit the method
-list.files(here("data", "spatial"), pattern='\\.shp$')
 
-try(if (file.exists(paste0(here("data", "spatial"),'/zip_MA.shp')) == FALSE)
-  stop("ZIP code file not available!"))
+zip.shape <- read_sf("data/spatial/zip_MA.shp")
 
-# read shape files of ZIP code boundaries
-zip.shape <- readOGR(dsn=path.expand(here("data", "spatial")), layer ="zip_MA")
-
-# project the shapefiles to NAD83
-# proj4string(zip.shape) <- ma_mainland_nad83_crs
-
-spTransform(zip.shape, epsg_26986_crs_but_slightly_wrong)
-
-browser()
-
-# overlay any of the boundaries with the listing records
-pnt_zip.shape <- over(event.Points,zip.shape)
-
-# add the parcel attributes to the listings @@@
-listings_unique <- cbind(listings_unique_w_parcel, pnt_zip.shape$postcode, pnt_zip.shape$pc_name)
+listings_unique <- 
+  st_join(listings_unique_w_parcel %>% 
+            dplyr::select(!c(`pnt_zip.shape$postcode`, `pnt_zip.shape$pc_name`)),
+          zip.shape %>%
+            dplyr::select(postcode, pc_name),
+          left = TRUE)
 
 
 ###################################### STEP 5: CLEAN UP YEAR BUILT VARIABLE BASED ON PARCEL DATA ######################################
