@@ -38,19 +38,11 @@ day <- format(today, "%d")
 
 municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 
-# option_list <- list(
-#   make_option(c("-m", "--month"), type="character", default=month,
-#               help="month", metavar="month"),
-#   make_option(c("-y", "--year"), type="character", default=year,
-#               help="year", metavar="year")
-# )
-# 
-# opt_parser <- OptionParser(usage = "%prog [options] file", option_list=option_list)
-# arguments <- parse_args(opt_parser, positional_arguments = 1)
-
 opt <- vector()
-opt$year <- 2021
-opt$month <- 1
+
+opt$year <- lubridate::year(Sys.Date())
+opt$month <- lubridate::month(Sys.Date())-1
+
 file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_3-2021/rental-listings_3-2021/cleaner/1617807323.35616_listings_unique.csv"
 
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
@@ -113,7 +105,6 @@ listings_unique$update_lag <- as.Date(listings_unique$updated_date) - as.Date(li
 
 ###################################### STEP 3: LINK RENTAL LISTINGS DATA TO PARCEL ID ######################################
 # read lat long attributes of the listing records and create event points of WGS1984 geographic projection
-#WCS1984_CRS <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
 event.Points <-
   listings_unique %>% 
@@ -123,24 +114,13 @@ event.Points <-
   st_transform(.,
                crs = 26986)
 
-ggplot()+
-  geom_sf(data = parcels_consortium_abcd,
-          aes(geometry = geometry))+
-  geom_sf(data = event.Points,
-          aes(geometry = geometry))+
-coord_sf(xlim = c(224474.9, 252005.6), 
-         ylim = c(883835.7, 909577.2), expand = TRUE)
-
-# event.Points <- SpatialPoints(data.frame(latitude = listings_unique$latitude, longitude = listings_unique$longitude),
-#                               proj4string = CRS(WCS1984_CRS)) 
-
-#reproject the points to NAD83
-# event.Points <- spTransform(event.Points, epsg_26986_crs)
-# proj4string(parcels_consortium_abcd) <- epsg_26986_crs
-
-
-#overlay any of the boundaries with the listing records
-# pnt_parcels_consortium <- over(event.Points, parcels_consortium_abcd)
+# ggplot()+
+#   geom_sf(data = parcels_consortium_abcd,
+#           aes(geometry = geometry))+
+#   geom_sf(data = event.Points,
+#           aes(geometry = geometry))+
+# coord_sf(xlim = c(224474.9, 252005.6), 
+#          ylim = c(883835.7, 909577.2), expand = TRUE)
 
 listings_unique_w_parcel <- 
   st_join(event.Points %>% 
@@ -148,39 +128,6 @@ listings_unique_w_parcel <-
           parcels_consortium_abcd %>%
             dplyr::select(luc_adj_2, luc_adj_1, yr_built, parloc_id),
           left = TRUE)
-
-# #extract the names from each overlay
-# try (
-#   if("parloc_id" %in% colnames(pnt_parcels_consortium))
-#     parloc_id <- pnt_parcels_consortium$parloc_id
-#   else
-#     stop("Error! No town attribute detected in town shapefile!")
-# )
-# 
-# try (
-#   if("yr_built" %in% colnames(pnt_parcels_consortium))
-#     yr_built <- pnt_parcels_consortium$yr_built
-#   else
-#     stop("Error! No town attribute detected in town shapefile!")
-# )
-# 
-# try (
-#   if("luc_adj_1" %in% colnames(pnt_parcels_consortium))
-#     luc_adj_1 <- pnt_parcels_consortium$luc_adj_1
-#   else
-#     stop("Error! No town attribute detected in town shapefile!")
-# )
-# 
-# try (
-#   if("luc_adj_2" %in% colnames(pnt_parcels_consortium))
-#     luc_adj_2 <- pnt_parcels_consortium$luc_adj_2
-#   else
-#     stop("Error! No town attribute detected in town shapefile!")
-# )
-# 
-# #add the parcel attributes to the listings @@@
-# listings_unique_w_parcel <- cbind(listings_unique, parloc_id, luc_adj_1, luc_adj_2, yr_built)
-
 
 ###################################### STEP 4: LINK RENTAL LISTINGS DATA TO ZIP CODE ######################################
 
@@ -312,23 +259,6 @@ bos_comp_update <- read_csv("data/partners/Boston/Boston Housing Completions 1.1
                             locale(encoding = "latin1")) %>% 
   janitor::clean_names()
 
-# rbind the bos_comp_older and bos_comp_update datasets on matching column names
-# l <- list(bos_comp_older,
-#           bos_comp_update)
-# 
-# u = do.call(smartbind,l)
-# 
-# bos_comp_final = u %>%
-#   dplyr::select(colnames(bos_comp_older))
-
-# bos_comp_older %>% 
-#   dplyr::select(project, street_number, street_name, planning_district, parloc_id, complete_date) %>% 
-#   bind_rows(.,
-#             bos_comp_update %>% 
-#               dplyr::select(project, st_number, street_name, planning_district, complete_date) %>% 
-#               rename(street_number = st_number)) %>% view()
-# 
-# 
 bos_comp_older <-
   bos_comp_older %>%
   mutate(bos_yr_built = year(mdy(complete_date))) %>%
@@ -430,6 +360,14 @@ listings_unique_units_clean <-
   mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) %>% # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
 st_drop_geometry()
 
+listings_unique_units_clean_shp <- 
+  listings_unique_units %>%
+  st_transform(crs = 4326) %>% 
+  mutate(longitude =  sf::st_coordinates(.)[,1],
+         latitude = sf::st_coordinates(.)[,2]) %>%
+  filter(!(zip_code == '02108' & ask < 700) & numRooms != -1) %>% # also filters out all listings with numRooms == -1
+  mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) %>% # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
+st_transform(crs = 26986)
 
 listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
                                  rentcount = length(numRooms),
@@ -509,10 +447,19 @@ for (municipality in municipalities) {
   write.csv(filter(listings_summary_nhood_age, muni == municipality),
             here("data", "finished", municipality,  paste("listings_",municipality,"_summary_nhood_age_",opt$year,"-",opt$month,".csv", sep="")),
             row.names = FALSE)
-  write.csv(filter(listings_unique_units_clean, muni == municipality),
+  write.csv(filter(listings_unique_units_clean_shp, muni == municipality),
             here("data", "finished", municipality, paste("listings_",municipality,"_unique_clean_full_units_",opt$year,"-",opt$month,".csv", sep="")),
             row.names = FALSE)
 }
+
+# Save Shapefile summaries for every municipality.
+for (municipality in municipalities) {
+  dir.create(here("data", "finished", municipality), showWarnings = FALSE)
+  write_sf(filter(listings_unique_units_clean_shp, muni == municipality),
+            here("data", "finished", municipality, paste("listings_",municipality,"_unique_units_",opt$year,"-",opt$month,".shp", sep="")))
+}
+
+
 
 ###################################### STEP 8: WRITE TABLES ######################################
 write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
@@ -528,3 +475,6 @@ write.csv(listings_summary_muni_age, here("data", "finished", paste("listings_mu
 write.csv(listings_summary_ct_age, here("data", "finished", paste("listings_ct_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
 write.csv(listings_summary_nhood_age, here("data", "finished", paste("listings_nhood_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
 write.csv(listings_summary_zip_age, here("data", "finished", paste("listings_zip_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
+
+# WRITE CODE TO AUTOMATICALLY WRITE ALL THESE FILES TO :
+# K:\DataServices\Projects\Current_Projects\rental_listings_research\data\output\output_2021_03
