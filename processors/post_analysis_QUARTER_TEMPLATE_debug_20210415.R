@@ -1,4 +1,4 @@
-### RENTAL LISTINGS POST-PROCESSING SKELETON CODE -- MONTHLY ###
+### RENTAL LISTINGS POST-PROCESSING SKELETON CODE -- QUARTERLY ###
 # STEP 0: CODE PREP (PACKAGES, WORKING DIRECTORIES, SETTINGS)
 # STEP 1: READ IN MOST UPDATED PARCEL DATA
 # STEP 2: READ IN RENTAL LISTINGS DATA <<<--------- UPDATE WITH MOST RECENT RENTAL LISTINGS QUARTERLY DATA CSV!
@@ -35,14 +35,11 @@ year<- format(today, "%Y")
 month <- format(today, "%m")
 day <- format(today, "%d")
 
+quarter <- paste0("Q",ifelse(month == "04", "1", ifelse(month == "07", "2", ifelse(month == "10", "3", ifelse(month == "01", "4")))))
+
 municipalities <- c("BOSTON","CAMBRIDGE","QUINCY","SOMERVILLE","ARLINGTON")
 
-opt <- vector()
-
-opt$year <- lubridate::year(Sys.Date())
-opt$month <- lubridate::month(Sys.Date())-1
-
-file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_3-2021/rental-listings_3-2021/cleaner/1617807323.35616_listings_unique.csv"
+file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_Q1-2021/rental-listings_Q1-2021/cleaner/1618519213.96647_listings_unique.csv"
 
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
 # Loading the parcels database file as an .RData file to reduce file size
@@ -226,6 +223,7 @@ listings_unique <-
                                yr_built < 2011 ~ "a_Before 2011",
                                yr_built == 0 ~ "d_NA")) %>% 
   
+  
   ###################################### STEP 6: FINAL DATASET WRANGLING BEFORE ANALYSIS ######################################
 ### rooms for rent ###
 #create keyWord list for studio and 1-10 bedrooms by calling com function
@@ -243,7 +241,13 @@ listings_unique_units <-
   listings_unique %>%
   rename(
     zip_code = postcode, 
-    zip_muni = pc_name) %>% 
+    zip_muni = pc_name,
+    studio_not_in_range = `studio _not_in_range`,
+    one_bedroom_not_in_range = `one_bedroom _not_in_range`,
+    two_bedroom_not_in_range = `two_bedroom _not_in_range`,
+    three_bedroom_not_in_range = `three_bedroom _not_in_range`,
+    four_bedroom_not_in_range = `four_bedroom _not_in_range`
+    ) %>% 
   dplyr::select(id,
                 ask,
                 bedrooms,
@@ -268,15 +272,15 @@ listings_unique_units <-
                 neighborhood_02,
                 neighborhood_03,
                 studio,
-                studio._not_in_range,
+                studio_not_in_range,
                 one_bedroom,
-                one_bedroom._not_in_range,
+                one_bedroom_not_in_range,
                 two_bedroom,
-                two_bedroom._not_in_range,
+                two_bedroom_not_in_range,
                 three_bedroom,
-                three_bedroom._not_in_range,
+                three_bedroom_not_in_range,
                 four_bedroom,
-                four_bedroom._not_in_range,
+                four_bedroom_not_in_range,
                 periodblt,
                 roomrent,
                 sublet,
@@ -327,9 +331,9 @@ listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "mo
 
 gc() # garbage collection -- tells us how much space we have remaining in memory
 
-###################################### STEP 7: MONTHLY SUMMARY STATISTICS ######################################
+###################################### STEP 7: QUARTERLY SUMMARY STATISTICS ######################################
 # Overall Listings summary
-listings_summary_full <-
+listings_summary_full_quarterly <-
   listings_unique_units_clean %>% 
   group_by(numRooms) %>% 
   summarise(rentcount = length(numRooms),
@@ -337,7 +341,7 @@ listings_summary_full <-
             medrent = round(median(ask), 0))
 
 # Listings summary by municipality
-listings_summary_muni <- 
+listings_summary_muni_quarterly <- 
   listings_unique_units_clean %>% 
   group_by(muni, numRooms) %>% 
   summarise(rentcount = length(numRooms),
@@ -345,7 +349,7 @@ listings_summary_muni <-
             medrent = round(median(ask), 0))
 
 # Listings summary by neighborhood
-listings_summary_nhood <- 
+listings_summary_nhood_quarterly <- 
   listings_unique_units_clean %>% 
   group_by(neighborhood_01, muni, numRooms) %>% 
   summarise(rentcount = length(numRooms),
@@ -353,7 +357,7 @@ listings_summary_nhood <-
             medrent = round(median(ask), 0))
 
 # Listings summary by Census Tract
-listings_summary_ct <- 
+listings_summary_ct_quarterly <- 
   listings_unique_units_clean %>% 
   group_by(ct10_id, muni, numRooms) %>% 
   summarise(rentcount = length(numRooms),
@@ -361,7 +365,7 @@ listings_summary_ct <-
             medrent = round(median(ask), 0))
 
 # Listings summary by zip code
-listings_summary_zip <-
+listings_summary_zip_quarterly <-
   listings_unique_units_clean %>% 
   group_by(zip_code, muni, numRooms) %>% 
   summarise(rentcount = length(numRooms),
@@ -369,7 +373,7 @@ listings_summary_zip <-
             medrent = round(median(ask), 0))
 
 # Overall Listings summary with age of building
-listings_summary_full_age <-
+listings_summary_full_quarterly_age <-
   listings_unique_units_clean %>% 
   group_by(source_id, numRooms, periodblt) %>% 
   summarise(rentcount = length(numRooms),
@@ -377,7 +381,7 @@ listings_summary_full_age <-
             medrent = round(median(ask), 0))
 
 # Listings summary by municipality with age of building
-listings_summary_muni_age <-
+listings_summary_muni_quarterly_age <-
   listings_unique_units_clean %>% 
   group_by(source_id, muni, numRooms, periodblt) %>% 
   summarise(rentcount = length(numRooms),
@@ -385,7 +389,7 @@ listings_summary_muni_age <-
             medrent = round(median(ask), 0))
 
 # Listings summary by neighborhood with age of building
-listings_summary_nhood_age <- 
+listings_summary_nhood_quarterly_age <- 
   listings_unique_units_clean %>% 
   group_by(source_id, neighborhood_01, muni, numRooms, periodblt) %>% 
   summarise(rentcount = length(numRooms),
@@ -393,7 +397,7 @@ listings_summary_nhood_age <-
             medrent = round(median(ask), 0))
 
 # Listings summary by Census Tract with age of building
-listings_summary_ct_age <-
+listings_summary_ct_quarterly_age <-
   listings_unique_units_clean %>% 
   group_by(source_id, ct10_id, numRooms, periodblt) %>% 
   summarise(rentcount = length(numRooms),
@@ -401,31 +405,30 @@ listings_summary_ct_age <-
             medrent = round(median(ask), 0))
 
 # Listings summary by zip code with age of building
-listings_summary_zip_age <-
+listings_summary_zip_quarterly_age <-
   listings_unique_units_clean %>% 
   group_by(source_id, zip_code, numRooms, periodblt) %>% 
   summarise(rentcount = length(numRooms),
             meanrent = round(mean(ask),0),
             medrent = round(median(ask), 0))
 
-###################################### STEP 8: WRITE TABLES ######################################
 # Save CSV summaries for every municipality.
 for (municipality in municipalities) {
   dir.create(here("data", "finished", municipality), showWarnings = FALSE)
-  write.csv(filter(listings_summary_muni, muni == municipality),
-            here("data", "finished", municipality, paste("listings_",municipality,"_summary_",opt$year,"-",opt$month,".csv", sep="")),
+  write.csv(filter(listings_summary_muni_quarterly, muni == municipality),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
-  write.csv(filter(listings_summary_nhood, muni == municipality),
-            here("data", "finished", municipality, paste("listings_",municipality,"_summary_nhood_",opt$year,"-",opt$month,".csv", sep="")),
+  write.csv(filter(listings_summary_nhood_quarterly, muni == municipality),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_nhood_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
-  write.csv(filter(listings_summary_muni_age, muni == municipality),
-            here("data", "finished", municipality, paste("listings_",municipality,"_summary_age_",opt$year,"-",opt$month,".csv", sep="")),
+  write.csv(filter(listings_summary_muni_quarterly_age, muni == municipality),
+            here("data", "finished", municipality, paste("listings_",municipality,"_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
-  write.csv(filter(listings_summary_nhood_age, muni == municipality),
-            here("data", "finished", municipality,  paste("listings_",municipality,"_summary_nhood_age_",opt$year,"-",opt$month,".csv", sep="")),
+  write.csv(filter(listings_summary_nhood_quarterly_age, muni == municipality),
+            here("data", "finished", municipality,  paste("listings_",municipality,"_summary_nhood_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
-  write.csv(filter(listings_unique_units_clean_shp, muni == municipality),
-            here("data", "finished", municipality, paste("listings_",municipality,"_unique_clean_full_units_",opt$year,"-",opt$month,".csv", sep="")),
+  write.csv(filter(listings_unique_units_clean, muni == municipality),
+            here("data", "finished", municipality, paste("listings_",municipality,"_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),
             row.names = FALSE)
 }
 
@@ -433,23 +436,24 @@ for (municipality in municipalities) {
 for (municipality in municipalities) {
   dir.create(here("data", "finished", municipality), showWarnings = FALSE)
   write_sf(filter(listings_unique_units_clean_shp, muni == municipality),
-           here("data", "finished", municipality, paste("listings_",municipality,"_unique_units_",opt$year,"-",opt$month,".shp", sep="")))
+           here("data", "finished", municipality, paste("listings_",municipality,"_unique_clean_full_units_",year,quarter,"_",year,month,day,".shp", sep="")))
 }
 
-write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_full,here("data", "finished", paste("listings_full_summary_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_muni, here("data", "finished", paste("listings_muni_summary_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_ct, here("data", "finished", paste("listings_ct_summary_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_nhood, here("data", "finished", paste("listings_nhood_summary_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_zip, here("data", "finished", paste("listings_zip_summary_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_full_age, here("data", "finished", paste("listings_full_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_muni_age, here("data", "finished", paste("listings_muni_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_ct_age, here("data", "finished", paste("listings_ct_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_nhood_age, here("data", "finished", paste("listings_nhood_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
-write.csv(listings_summary_zip_age, here("data", "finished", paste("listings_zip_summary_age_",opt$year,"-",opt$month,".csv", sep="")),row.names = FALSE)
+###################################### STEP 8: WRITE TABLES (MAKE SURE YOU CHANGE THE YEAR AND QUARTER IN THE FILE NAMES BELOW) ######################################
+write.csv(listings_summary_counts, here("data", "finished", paste("listings_summary_counts_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units, here("data", "finished", paste("listings_unique_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_unique_units_clean, here("data", "finished", paste("listings_unique_clean_full_units_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly,here("data", "finished", paste("listings_full_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly, here("data", "finished", paste("listings_muni_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly, here("data", "finished", paste("listings_ct_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly, here("data", "finished", paste("listings_nhood_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly, here("data", "finished", paste("listings_zip_summary_quarterly_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_full_quarterly_age, here("data", "finished", paste("listings_full_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_muni_quarterly_age, here("data", "finished", paste("listings_muni_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_ct_quarterly_age, here("data", "finished", paste("listings_ct_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_nhood_quarterly_age, here("data", "finished", paste("listings_nhood_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
+write.csv(listings_summary_zip_quarterly_age, here("data", "finished", paste("listings_zip_summary_quarterly_age_",year,quarter,"_",year,month,day,".csv", sep="")),row.names = FALSE)
 
 ###################################### STEP 9: WRITE TABLES ######################################
 # WRITE CODE TO AUTOMATICALLY WRITE ALL THESE FILES TO :
-# K:\DataServices\Projects\Current_Projects\rental_listings_research\data\output\output_2021_03
+# K:\DataServices\Projects\Current_Projects\rental_listings_research\data\output
