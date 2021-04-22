@@ -247,7 +247,7 @@ listings_unique_units <-
     two_bedroom_not_in_range = `two_bedroom _not_in_range`,
     three_bedroom_not_in_range = `three_bedroom _not_in_range`,
     four_bedroom_not_in_range = `four_bedroom _not_in_range`
-    ) %>% 
+  ) %>% 
   dplyr::select(id,
                 ask,
                 bedrooms,
@@ -325,9 +325,11 @@ listings_unique_units_clean_shp <-
   mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) %>% # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
   st_transform(crs = 26986)
 
-listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
-                                       rentcount = length(numRooms),
-                                       medrent = round(median(ask), 0))
+listings_summary_counts <-
+  listings_unique_units_clean %>% 
+  group_by(year, month, source_id) %>% 
+  summarise(rentcount = length(numRooms),
+            medrent = round(median(ask), 0))
 
 gc() # garbage collection -- tells us how much space we have remaining in memory
 

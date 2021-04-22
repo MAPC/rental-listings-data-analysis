@@ -42,11 +42,11 @@ opt <- vector()
 opt$year <- lubridate::year(Sys.Date())
 opt$month <- lubridate::month(Sys.Date())-1
 
-file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_3-2021/rental-listings_3-2021/cleaner/1617807323.35616_listings_unique.csv"
+file <- "K:/DataServices/Projects/Current_Projects/rental_listings_research/r_scripts/analysis/rental-listings-data-analysis/data/rental-listings_12-2020/cleaner/1619109747.18396_listings_unique.csv"
 
 ###################################### STEP 1: READ IN MOST UPDATED PARCEL DATA ######################################
 # Loading the parcels database file as an .RData file to reduce file size
-load(file = here("data", "spatial", "parcels_consortium_abcd.RData"))
+load(file = here("data/spatial/parcels_consortium_abcd.RData"))
 
 parcels_consortium_abcd <- 
   parcels_consortium_abcd %>% 
@@ -243,7 +243,13 @@ listings_unique_units <-
   listings_unique %>%
   rename(
     zip_code = postcode, 
-    zip_muni = pc_name) %>% 
+    zip_muni = pc_name,
+    studio_not_in_range = `studio _not_in_range`,
+    one_bedroom_not_in_range = `one_bedroom _not_in_range`,
+    two_bedroom_not_in_range = `two_bedroom _not_in_range`,
+    three_bedroom_not_in_range = `three_bedroom _not_in_range`,
+    four_bedroom_not_in_range = `four_bedroom _not_in_range`
+  ) %>% 
   dplyr::select(id,
                 ask,
                 bedrooms,
@@ -268,15 +274,15 @@ listings_unique_units <-
                 neighborhood_02,
                 neighborhood_03,
                 studio,
-                studio._not_in_range,
+                studio_not_in_range,
                 one_bedroom,
-                one_bedroom._not_in_range,
+                one_bedroom_not_in_range,
                 two_bedroom,
-                two_bedroom._not_in_range,
+                two_bedroom_not_in_range,
                 three_bedroom,
-                three_bedroom._not_in_range,
+                three_bedroom_not_in_range,
                 four_bedroom,
-                four_bedroom._not_in_range,
+                four_bedroom_not_in_range,
                 periodblt,
                 roomrent,
                 sublet,
@@ -321,9 +327,11 @@ listings_unique_units_clean_shp <-
   mutate(neighborhood_01 = ifelse(muni == "ARLINGTON", ct10_id,  neighborhood_01)) %>% # use census tract 2010 ID for Arlington neighborhood variable since we don't have neighborhood names yet
   st_transform(crs = 26986)
 
-listings_summary_counts <- plyr::ddply(listings_unique_units_clean,c("year", "month", "source_id"), summarise,
-                                       rentcount = length(numRooms),
-                                       medrent = round(median(ask), 0))
+listings_summary_counts <-
+  listings_unique_units_clean %>% 
+  group_by(year, month, source_id) %>% 
+  summarise(rentcount = length(numRooms),
+            medrent = round(median(ask), 0))
 
 gc() # garbage collection -- tells us how much space we have remaining in memory
 
